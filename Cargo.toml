@@ -6,3 +6,4 @@ authors = ["Kerollmops <renault.cle@gmail.com>"]
 [dependencies]
 num-complex = "0.1"
 image = "0.18"
+palette = "0.3"

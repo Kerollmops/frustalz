@@ -1,7 +1,10 @@
 extern crate image;
+extern crate palette;
 extern crate fractalz;
 
-use image::{RgbImage, Rgb};
+use image::RgbImage;
+use palette::Gradient;
+use palette::rgb::LinSrgb;
 
 use fractalz::Fractal;
 use fractalz::Julia;
@@ -19,6 +22,15 @@ fn main() {
         to: (0.0, 0.0),
     };
 
+    let gradient = Gradient::with_domain(vec![
+        (0.0, LinSrgb::new(0.0, 0.027, 0.392)),     // 0, 2.7, 39.2
+        (0.16, LinSrgb::new(0.125, 0.42, 0.796)),   // 12.5, 42, 79.6
+        (0.42, LinSrgb::new(0.929, 1.0, 1.0)),      // 92.9, 100, 100
+        (0.6425, LinSrgb::new(1.0, 0.667, 0.0)),    // 100, 66.7, 0
+        (0.8575, LinSrgb::new(0.0, 0.008, 0.0)),    // 0, 0.8, 0
+        (1.0, LinSrgb::new(0.0, 0.0, 0.0)),         // 0, 0, 0
+    ]);
+
     for x in 0..width {
         for y in 0..height {
             let coord = (x, y);
@@ -27,7 +39,9 @@ fn main() {
             let (x, y) = camera.zoom(pos);
             let i = julia.iterations(x, y);
 
-            image[coord] = Rgb { data: [i, i, i] };
+            let color = gradient.get(i as f32 / u8::max_value() as f32);
+
+            image[coord] = image::Rgb { data: color.into_pixel() };
         }
     }
 
