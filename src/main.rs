@@ -6,9 +6,9 @@ extern crate rand;
 #[macro_use] extern crate rand_derive;
 extern crate pathfinding;
 extern crate chrono;
+#[macro_use] extern crate structopt;
 extern crate fractalz;
 
-use std::time::SystemTime;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
@@ -20,6 +20,7 @@ use palette::rgb::LinSrgb;
 use rand::{SeedableRng, Rng};
 use rand::StdRng;
 use pathfinding::dijkstra;
+use structopt::StructOpt;
 use chrono::{Utc, DateTime, Timelike};
 
 use fractalz::Fractal;
@@ -98,6 +99,17 @@ fn floor_to_hour(datetime: DateTime<Utc>) -> DateTime<Utc> {
         .with_nanosecond(0).unwrap()
 }
 
+#[derive(Debug, StructOpt)]
+struct Settings {
+    /// The date to use as a seed
+    #[structopt(long = "date-seed")]
+    date_seed: Option<DateTime<Utc>>,
+
+    /// Antialiazing used for the images generated (power of 4).
+    #[structopt(long = "antialiazing", default_value = "4")]
+    antialiazing: u8,
+}
+
 #[derive(Debug, Rand)]
 enum RandFractal {
     Mandelbrot,
@@ -105,10 +117,13 @@ enum RandFractal {
 }
 
 fn main() {
+    let settings = Settings::from_args();
+
     let mut rng = {
-        // TODO uncomment !
-        // let datetime = floor_to_hour(Utc::now());
-        let datetime = SystemTime::now();
+        let datetime = settings.date_seed.unwrap_or(Utc::now());
+        let datetime = floor_to_hour(datetime);
+
+        println!("{:?}", datetime);
 
         let mut s = DefaultHasher::new();
         datetime.hash(&mut s);
@@ -130,7 +145,7 @@ fn main() {
             (Box::new(mandelbrot), zoom)
         },
         RandFractal::Julia => {
-            let re = rng.gen_range(-1.0, 0.99);
+            let re = rng.gen_range(-1.0, 1.0);
             let im = rng.gen_range(0.0, 1.0);
             let zoom = rng.gen_range(10e-4, 10e-2);
 
@@ -175,14 +190,13 @@ fn main() {
         image::Rgb { data: color.into_pixel() }
     };
 
-    // antialiazing (power of 2)
-    let aa = 1.0;
-
     if let Some((x, y)) = target_point {
         let center = camera.screen_to_world([x as f64, y as f64]);
         println!("position: {:?}", center);
         println!("zoom: {:?}", zoom);
     }
+
+    let aa = settings.antialiazing as f64;
 
     // once the targeted point has been found
     // - zoom to the target spot
