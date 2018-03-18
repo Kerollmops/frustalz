@@ -44,7 +44,7 @@ impl Camera {
     }
 
     /// Transforms the point in screen coordinates in a point in world coordinates,
-    /// taking the center of the screen and the zoom into account.
+    /// taking the screen data and the zoom into account.
     ///
     /// `point` is the point in screen coordinates (`[0, width[`).
     pub fn screen_to_world(&self, point: [f64; 2]) -> [f64; 2] {
