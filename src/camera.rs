@@ -55,18 +55,17 @@ impl Camera {
         assert!(x >= 0.0 && x < sx, "x is outside screen domain coordinates");
         assert!(y >= 0.0 && y < sy, "y is outside screen domain coordinates");
 
-        // update `x` to keep the screen ratio correct
         let screen_ratio = sx / sy;
-        let x = x * screen_ratio;
 
         // reduce the point to world coordinates:
         //
         // `* 2.0` move to `[0, 2 * width[`
         // `x / sx` reduce to `[0, 2[`
         // `- 1.0` move to `[-1, 1[`
+        // `* screen_ratio` keep the screen ratio
         // `* self.zoom` reduce to the current zoom
         // `+ cx` translate the point to the center
-        let x = (x * 2.0 / sx - 1.0) * self.zoom + cx;
+        let x = (x * 2.0 / sx - 1.0) * screen_ratio * self.zoom + cx;
         let y = (y * 2.0 / sy - 1.0) * self.zoom + cy;
 
         [x, y]
