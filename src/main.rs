@@ -6,7 +6,7 @@ extern crate rand;
 extern crate pathfinding;
 extern crate fractalz;
 
-use image::{GenericImage, FilterType};
+use image::FilterType;
 use image::RgbImage;
 use image::imageops;
 use palette::Gradient;
@@ -85,8 +85,8 @@ where
 }
 
 fn main() {
-    let mut rng = StdRng::from_seed(&[42, 42, 42]);
-    // let mut rng = StdRng::new().unwrap();
+    // let mut rng = StdRng::from_seed(&[42, 42]);
+    let mut rng = StdRng::new().unwrap();
     // let fractal = Julia::new(0.0, 0.0);
     let fractal = Mandelbrot::new();
 
@@ -128,17 +128,24 @@ fn main() {
         image::Rgb { data: color.into_pixel() }
     };
 
+    // antialiazing (power of 2)
+    let aa = 1.0;
+
+    let zoom = rng.gen_range(10e-8, 10e-4);
+
+    if let Some((x, y)) = target_point {
+        let center = camera.screen_to_world([x as f64, y as f64]);
+        println!("position: {:?}", center);
+        println!("zoom: {:?}", zoom);
+    }
+
     // once the targeted point has been found
     // - zoom to the target spot
     // - create a colorful image of this spot
-
-    // antialiazing (power of 2)
-    let aa = 8.0;
-
     let (bwidth, bheight) = (width * aa as u32, height * aa as u32);
     camera.screen_size = [bwidth as f64, bheight as f64];
     let (x, y) = target_point.expect("no starting point found");
-    camera.target_on([x as f64 * aa, y as f64 * aa], 0.0003);
+    camera.target_on([x as f64 * aa, y as f64 * aa], zoom);
     let image = produce_image(&fractal, &camera, (bwidth, bheight), colorizer);
     let image = imageops::resize(&image, width, height, FilterType::Triangle);
 
