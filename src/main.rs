@@ -6,9 +6,9 @@ extern crate rand;
 extern crate pathfinding;
 extern crate fractalz;
 
-use image::GenericImage;
+use image::{GenericImage, FilterType};
 use image::RgbImage;
-use image::imageops::{blur, filter3x3};
+use image::imageops;
 use palette::Gradient;
 use palette::rgb::LinSrgb;
 use rand::{SeedableRng, Rng};
@@ -24,7 +24,7 @@ fn edges(image: &RgbImage) -> RgbImage {
                   -1.0,  8.0, -1.0,
                   -1.0, -1.0, -1.0];
 
-    filter3x3(image, &kernel)
+    imageops::filter3x3(image, &kernel)
 }
 
 fn produce_image<F, C>(fractal: &F,
@@ -85,8 +85,8 @@ where
 }
 
 fn main() {
-    // let mut rng = StdRng::from_seed(&[42, 42, 42]);
-    let mut rng = StdRng::new().unwrap();
+    let mut rng = StdRng::from_seed(&[42, 42, 42]);
+    // let mut rng = StdRng::new().unwrap();
     // let fractal = Julia::new(0.0, 0.0);
     let fractal = Mandelbrot::new();
 
@@ -103,7 +103,7 @@ fn main() {
     // - find the nearest white point on the edged image starting from the previous black point
     let target_point = {
         let grayscaled = produce_image(&fractal, &camera, dimensions, |i| image::Rgb { data: [i; 3] });
-        let blurred = blur(&grayscaled, 10.0);
+        let blurred = imageops::blur(&grayscaled, 10.0);
         let black_point = {
             let start = (rng.gen_range(0, width), rng.gen_range(0, height));
             find_point(start, &blurred, |p| p.data[0] <= 128).expect("no black point found")
@@ -131,28 +131,17 @@ fn main() {
     // once the targeted point has been found
     // - zoom to the target spot
     // - create a colorful image of this spot
+
+    // antialiazing (power of 2)
+    let aa = 8.0;
+
+    let (bwidth, bheight) = (width * aa as u32, height * aa as u32);
+    camera.screen_size = [bwidth as f64, bheight as f64];
     let (x, y) = target_point.expect("no starting point found");
-    camera.target_on([x as f64, y as f64], 0.0003);
-    let image = produce_image(&fractal, &camera, dimensions, colorizer);
+    camera.target_on([x as f64 * aa, y as f64 * aa], 0.0003);
+    let image = produce_image(&fractal, &camera, (bwidth, bheight), colorizer);
+    let image = imageops::resize(&image, width, height, FilterType::Triangle);
 
-    // // create debug subimage
-    // {
-    //     let camera = Camera::new([width as f64, height as f64]);
-    //     let colorizer = |i| {
-    //         let color = gradient.get(i as f32 / 255.0);
-    //         image::Rgb { data: color.into_pixel() }
-    //     };
-
-    //     let (x, y) = start_point.expect("no starting point found");
-    //     let mut image = produce_image(&fractal, &camera, dimensions, colorizer);
-    //     {
-    //         let mut subimage = image.sub_image(x - 3, y - 3, 6, 6);
-    //         for (_, _, p) in subimage.pixels_mut() {
-    //             *p = image::Rgb { data: [255, 0, 0] };
-    //         }
-    //     }
-    //     image.save("./spotted-area.png").unwrap();
-    // }
 
     image.save("./image.png").unwrap();
 }
