@@ -16,7 +16,7 @@ use rand::StdRng;
 use pathfinding::dijkstra;
 
 use fractalz::Fractal;
-use fractalz::Julia;
+use fractalz::{Julia, Mandelbrot};
 use fractalz::Camera;
 
 fn grayscale<F: Fractal>(fractal: &F,
@@ -55,8 +55,10 @@ fn edges<F: Fractal>(fractal: &F,
     filter3x3(&grayscale, &kernel)
 }
 
-fn nearest_interresting_point(edges: &RgbImage) -> Option<(u32, u32)> {
-    let mut rng = StdRng::from_seed(&[42, 42, 42]);
+fn nearest_interresting_point<R: Rng>(rng: &mut R,
+                                      edges: &RgbImage)
+                                      -> Option<(u32, u32)>
+{
     let x = rng.gen_range(0, edges.width());
     let y = rng.gen_range(0, edges.height());
 
@@ -117,19 +119,22 @@ fn colorfull<F: Fractal>(fractal: &F,
 }
 
 fn main() {
-    let julia = Julia::new(0.0, 0.0);
+    // let mut rng = StdRng::from_seed(&[42, 42, 42]);
+    let mut rng = StdRng::new().unwrap();
+    // let fractal = Julia::new(0.0, 0.0);
+    let fractal = Mandelbrot::new();
 
     let dimensions = (800, 600);
     let (width, height) = dimensions;
 
-    let camera = Camera::new([width as f64, height as f64]);
+    let mut camera = Camera::new([width as f64, height as f64]);
 
-    let image = edges(&julia, dimensions, &camera);
-    let (x, y) = nearest_interresting_point(&image).unwrap();
+    let image = edges(&fractal, dimensions, &camera);
+    let (x, y) = nearest_interresting_point(&mut rng, &image).unwrap();
 
     // create debug subimage
     {
-        let mut image = edges(&julia, dimensions, &camera);
+        let mut image = edges(&fractal, dimensions, &camera);
         {
             let mut subimage = image.sub_image(x - 3, y - 3, 6, 6);
             for (_, _, p) in subimage.pixels_mut() {
@@ -139,10 +144,9 @@ fn main() {
         image.save("./spotted-area.png").unwrap();
     }
 
-    let mut camera = Camera::new([width as f64, height as f64]);
-    camera.target_on([x as f64, y as f64], 1.0);
+    camera.target_on([x as f64, y as f64], 0.0003);
 
-    let mut image = colorfull(&julia, dimensions, camera);
+    let mut image = colorfull(&fractal, dimensions, camera);
 
     image.save("./image.png").unwrap();
 }

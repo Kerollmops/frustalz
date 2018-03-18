@@ -6,7 +6,7 @@ mod fractal;
 mod camera;
 
 pub use fractal::Fractal;
-pub use fractal::Julia;
+pub use fractal::*;
 pub use camera::Camera;
 
 #[cfg(test)]

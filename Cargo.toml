@@ -9,3 +9,6 @@ image = "0.18"
 palette = "0.3"
 rand = "0.4"
 pathfinding = "0.6"
+
+[profile.release]
+debug = true
