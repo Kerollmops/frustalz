@@ -55,6 +55,10 @@ impl Camera {
         assert!(x >= 0.0 && x < sx, "x is outside screen domain coordinates");
         assert!(y >= 0.0 && y < sy, "y is outside screen domain coordinates");
 
+        // update `x` to keep the screen ratio correct
+        let screen_ratio = sx / sy;
+        let x = x * screen_ratio;
+
         // reduce the point to world coordinates:
         //
         // `* 2.0` move to `[0, 2 * width[`
