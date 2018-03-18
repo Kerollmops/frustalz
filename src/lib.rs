@@ -1,11 +1,13 @@
+#![feature(slice_patterns)]
+
 extern crate num_complex;
 
 mod fractal;
-mod camera_zoom;
+mod camera;
 
 pub use fractal::Fractal;
 pub use fractal::Julia;
-pub use camera_zoom::CameraZoom;
+pub use camera::Camera;
 
 #[cfg(test)]
 mod tests {

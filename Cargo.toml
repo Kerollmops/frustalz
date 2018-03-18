@@ -7,3 +7,5 @@ authors = ["Kerollmops <renault.cle@gmail.com>"]
 num-complex = "0.1"
 image = "0.18"
 palette = "0.3"
+rand = "0.4"
+pathfinding = "0.6"
