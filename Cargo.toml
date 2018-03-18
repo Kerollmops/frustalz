@@ -8,7 +8,9 @@ num-complex = "0.1"
 image = "0.18"
 palette = "0.3"
 rand = "0.4"
+rand_derive = "0.3"
 pathfinding = "0.6"
+chrono = "0.4"
 
 [profile.release]
 debug = true

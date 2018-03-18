@@ -3,8 +3,14 @@
 extern crate image;
 extern crate palette;
 extern crate rand;
+#[macro_use] extern crate rand_derive;
 extern crate pathfinding;
+extern crate chrono;
 extern crate fractalz;
+
+use std::time::SystemTime;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 use image::FilterType;
 use image::RgbImage;
@@ -14,6 +20,7 @@ use palette::rgb::LinSrgb;
 use rand::{SeedableRng, Rng};
 use rand::StdRng;
 use pathfinding::dijkstra;
+use chrono::{Utc, DateTime, Timelike};
 
 use fractalz::Fractal;
 use fractalz::{Julia, Mandelbrot};
@@ -33,7 +40,7 @@ fn produce_image<F, C>(fractal: &F,
                        coloriser: C)
                        -> RgbImage
 where
-    F: Fractal,
+    F: Fractal + ?Sized,
     C: Fn(u8) -> image::Rgb<u8>
 {
     let (width, height) = dimensions;
@@ -84,16 +91,56 @@ where
     result.map(|(path, _)| *path.last().unwrap())
 }
 
+fn floor_to_hour(datetime: DateTime<Utc>) -> DateTime<Utc> {
+    datetime
+        .with_minute(0).unwrap()
+        .with_second(0).unwrap()
+        .with_nanosecond(0).unwrap()
+}
+
+#[derive(Debug, Rand)]
+enum RandFractal {
+    Mandelbrot,
+    Julia,
+}
+
 fn main() {
-    // let mut rng = StdRng::from_seed(&[42, 42]);
-    let mut rng = StdRng::new().unwrap();
-    // let fractal = Julia::new(0.0, 0.0);
-    let fractal = Mandelbrot::new();
+    let mut rng = {
+        // TODO uncomment !
+        // let datetime = floor_to_hour(Utc::now());
+        let datetime = SystemTime::now();
+
+        let mut s = DefaultHasher::new();
+        datetime.hash(&mut s);
+        let hash = s.finish();
+        StdRng::from_seed(&[hash as usize])
+    };
 
     let dimensions = (800, 600);
     let (width, height) = dimensions;
-
     let mut camera = Camera::new([width as f64, height as f64]);
+
+    let (fractal, zoom): (Box<Fractal>, _) = match rng.gen() {
+        RandFractal::Mandelbrot => {
+            let zoom = rng.gen_range(10e-7, 10e-4);
+            let mandelbrot = Mandelbrot::new();
+
+            println!("Mandelbrot");
+
+            (Box::new(mandelbrot), zoom)
+        },
+        RandFractal::Julia => {
+            let re = rng.gen_range(-1.0, 0.99);
+            let im = rng.gen_range(0.0, 1.0);
+            let zoom = rng.gen_range(10e-4, 10e-2);
+
+            println!("Julia ({}, {})", re, im);
+
+            let julia = Julia::new(re, im);
+
+            (Box::new(julia), zoom)
+        },
+    };
 
     // to find a good target point that will not be a black area:
     // - create a grayscale image
@@ -106,12 +153,12 @@ fn main() {
         let blurred = imageops::blur(&grayscaled, 10.0);
         let black_point = {
             let start = (rng.gen_range(0, width), rng.gen_range(0, height));
-            find_point(start, &blurred, |p| p.data[0] <= 128).expect("no black point found")
+            find_point(start, &blurred, |p| p.data[0] <= 128)
         };
-        let edged = edges(&grayscaled);
-        let white_point = find_point(black_point, &edged, |p| p.data[0] >= 128);
-
-        white_point
+        black_point.and_then(|black_point| {
+            let edged = edges(&grayscaled);
+            find_point(black_point, &edged, |p| p.data[0] >= 128)
+        })
     };
 
     let gradient = Gradient::with_domain(vec![
@@ -131,8 +178,6 @@ fn main() {
     // antialiazing (power of 2)
     let aa = 1.0;
 
-    let zoom = rng.gen_range(10e-8, 10e-4);
-
     if let Some((x, y)) = target_point {
         let center = camera.screen_to_world([x as f64, y as f64]);
         println!("position: {:?}", center);
@@ -148,7 +193,6 @@ fn main() {
     camera.target_on([x as f64 * aa, y as f64 * aa], zoom);
     let image = produce_image(&fractal, &camera, (bwidth, bheight), colorizer);
     let image = imageops::resize(&image, width, height, FilterType::Triangle);
-
 
     image.save("./image.png").unwrap();
 }
