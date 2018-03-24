@@ -1,5 +1,6 @@
 #![feature(slice_patterns)]
 
+extern crate num_complex;
 extern crate image;
 extern crate palette;
 extern crate rand;
@@ -12,9 +13,11 @@ extern crate fractalz;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
+use num_complex::Complex64;
 use image::FilterType;
 use image::RgbImage;
 use image::imageops;
+use palette::Mix;
 use palette::Gradient;
 use palette::rgb::LinSrgb;
 use rand::{SeedableRng, Rng};
@@ -107,13 +110,57 @@ struct Settings {
 
     /// Antialiazing used for the images generated (power of 4).
     #[structopt(long = "antialiazing", default_value = "4")]
-    antialiazing: u8,
+    antialiazing: u32,
 }
 
 #[derive(Debug, Rand)]
 enum RandFractal {
     Mandelbrot,
     Julia,
+}
+
+#[derive(Debug, Copy, Clone)]
+struct ComplexPalette(Complex64);
+
+impl ComplexPalette {
+    fn new(re: f64, im: f64) -> Self {
+        ComplexPalette(Complex64::new(re, im))
+    }
+}
+
+impl Mix for ComplexPalette {
+    type Scalar = f64;
+
+    fn mix(&self, other: &Self, factor: Self::Scalar) -> Self {
+        let complex = self.0 + factor * (other.0 - self.0);
+        ComplexPalette(complex)
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+struct SubGradient {
+    from: ComplexPalette,
+    to: ComplexPalette,
+}
+
+impl SubGradient {
+    fn new(from: ComplexPalette, to: ComplexPalette) -> Self {
+        SubGradient { from, to }
+    }
+
+    fn gradient(&self) -> Gradient<ComplexPalette> {
+        Gradient::new(vec![self.from, self.to])
+    }
+}
+
+impl Mix for SubGradient {
+    type Scalar = f64;
+
+    fn mix(&self, other: &Self, factor: Self::Scalar) -> Self {
+        let from = self.from.mix(&other.from, factor);
+        let to = self.to.mix(&other.to, factor);
+        SubGradient::new(from, to)
+    }
 }
 
 fn main() {
@@ -128,6 +175,7 @@ fn main() {
         let mut s = DefaultHasher::new();
         datetime.hash(&mut s);
         let hash = s.finish();
+
         StdRng::from_seed(&[hash as usize])
     };
 
@@ -145,10 +193,27 @@ fn main() {
             (Box::new(mandelbrot), zoom)
         },
         RandFractal::Julia => {
-            let re = rng.gen_range(-1.0, 1.0);
-            let im = rng.gen_range(0.0, 1.0);
-            let zoom = rng.gen_range(10e-4, 10e-2);
+            // https://upload.wikimedia.org/wikipedia/commons/a/a9/Julia-Teppich.png
+            let sub_gradients = Gradient::new(vec![
+                SubGradient::new(ComplexPalette::new(-0.8,  0.4), ComplexPalette::new(-0.8,  0.0)),
+                SubGradient::new(ComplexPalette::new(-0.6,  0.8), ComplexPalette::new(-0.6,  0.6)),
+                SubGradient::new(ComplexPalette::new(-0.4,  0.8), ComplexPalette::new(-0.4,  0.6)),
+                SubGradient::new(ComplexPalette::new(-0.2,  1.0), ComplexPalette::new(-0.2,  0.8)),
+                SubGradient::new(ComplexPalette::new( 0.0,  1.0), ComplexPalette::new( 0.0,  0.8)),
+                SubGradient::new(ComplexPalette::new( 0.19, 0.8), ComplexPalette::new( 0.19, 0.6)),
+                SubGradient::new(ComplexPalette::new( 0.49, 0.6), ComplexPalette::new( 0.49, 0.2)),
+            ]);
 
+            let i = rng.gen();
+            let sub_gradient = sub_gradients.get(i);
+
+            let gradient = sub_gradient.gradient();
+            let i = rng.gen();
+            let ComplexPalette(Complex64 { re, im }) = gradient.get(i);
+
+            let zoom = 1.0;
+
+            println!("for i = {:?}", i);
             println!("Julia ({}, {})", re, im);
 
             let julia = Julia::new(re, im);
@@ -194,6 +259,13 @@ fn main() {
         let center = camera.screen_to_world([x as f64, y as f64]);
         println!("position: {:?}", center);
         println!("zoom: {:?}", zoom);
+    }
+
+    // create debug subimage
+    {
+        let grayscaled = produce_image(&fractal, &camera, dimensions, |i| image::Rgb { data: [i; 3] });
+        let image = edges(&grayscaled);
+        image.save("./spotted-area.png").unwrap();
     }
 
     let aa = settings.antialiazing as f64;

@@ -8,7 +8,7 @@ pub struct Julia {
 impl Julia {
     pub fn new(re: f64, im: f64) -> Julia {
         Julia {
-            c: Complex64::new(0.3 + re, 0.5 + im)
+            c: Complex64::new(re, im)
         }
     }
 }
