@@ -1,4 +1,14 @@
-use image::{self, imageops, RgbImage};
+mod antialiazing;
+mod complex_palette;
+mod sub_gradient;
+mod screen_dimensions;
+
+pub use self::antialiazing::Antialiazing;
+pub use self::complex_palette::ComplexPalette;
+pub use self::sub_gradient::SubGradient;
+pub use self::screen_dimensions::ScreenDimensions;
+
+use image_crate::{imageops, RgbImage, Rgb};
 use camera::Camera;
 use fractal::Fractal;
 
@@ -17,7 +27,7 @@ pub fn produce_image<F, C>(fractal: &F,
                            -> RgbImage
 where
     F: Fractal + ?Sized,
-    C: Fn(u8) -> image::Rgb<u8>
+    C: Fn(u8) -> Rgb<u8>
 {
     let (width, height) = dimensions;
     let mut image = RgbImage::new(width, height);

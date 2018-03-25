@@ -1,43 +1,31 @@
-#![feature(slice_patterns)]
+mod settings;
+mod date_seed;
 
-extern crate num_complex;
-extern crate image;
-extern crate palette;
-extern crate rand;
-#[macro_use] extern crate rand_derive;
-extern crate pathfinding;
-extern crate chrono;
-#[macro_use] extern crate structopt;
-extern crate fractalz;
+pub use self::settings::Settings;
+pub use self::date_seed::DateSeed;
 
-use std::str::FromStr;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 use num_complex::Complex64;
-use image::FilterType;
-use image::RgbImage;
-use image::imageops;
-use palette::Gradient;
-use palette::rgb::LinSrgb;
 use rand::{SeedableRng, Rng};
+use rand::distributions::{Range, IndependentSample};
 use rand::StdRng;
 use pathfinding::dijkstra;
-use structopt::StructOpt;
-use chrono::{Utc, DateTime, Timelike};
-
-use fractalz::Fractal;
-use fractalz::{Julia, Mandelbrot};
-use fractalz::Camera;
-use fractalz::{ComplexPalette, SubGradient};
-use fractalz::{produce_image, edges};
+use image_crate::{imageops, RgbImage, Rgb, FilterType};
+use fractal::{Fractal, Mandelbrot, Julia};
+use camera::Camera;
+use image::{Antialiazing, ComplexPalette, SubGradient, ScreenDimensions};
+use image::{produce_image, edges};
+use palette::Gradient;
+use palette::rgb::LinSrgb;
 
 fn find_point<P>(start: (u32, u32),
                  image: &RgbImage,
                  predicate: P)
                  -> Option<(u32, u32)>
 where
-    P: Fn(&image::Rgb<u8>) -> bool
+    P: Fn(&Rgb<u8>) -> bool
 {
     let (width, height) = image.dimensions();
 
@@ -62,80 +50,10 @@ where
     result.map(|(path, _)| *path.last().unwrap())
 }
 
-fn floor_to_hour(datetime: DateTime<Utc>) -> Option<DateTime<Utc>> {
-    datetime
-        .with_minute(0)?
-        .with_second(0)?
-        .with_nanosecond(0)
-}
-
-#[derive(Debug, StructOpt)]
-struct Settings {
-    /// The date to use as a seed,
-    /// the default is the current datetime rounded to the hour.
-    #[structopt(long = "date-seed")]
-    date_seed: Option<DateTime<Utc>>,
-
-    /// Antialiazing used for the images generated (a power of 4).
-    #[structopt(long = "antialiazing", default_value = "4")]
-    antialiazing: u32,
-
-    /// Screen dimensions used for all image generations.
-    #[structopt(long = "screen-dimensions", default_value = "800x600")]
-    screen_dimensions: Option<ScreenDimensions>,
-
-    /// Whether the program produce all images while diving in the fractal.
-    #[structopt(long = "produce-debug-images", default_value = "true")]
-    produce_debug_images: bool,
-}
-
-#[derive(Debug, Copy, Clone)]
-struct ScreenDimensions(u32, u32);
-
-impl ScreenDimensions {
-    fn tuple(&self) -> (u32, u32) {
-        let ScreenDimensions(width, height) = *self;
-        (width, height)
-    }
-}
-
-impl FromStr for ScreenDimensions {
-    type Err = &'static str;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let s = s.trim();
-
-        let mut splitted = s.split('x');
-
-        let invalid_msg = "invalid dimension format";
-
-        let width = splitted.next().ok_or(invalid_msg)?;
-        let height = splitted.next().ok_or(invalid_msg)?;
-        if splitted.next().is_some() {
-            return Err(invalid_msg)
-        }
-
-        let width = width.parse().map_err(|_| "invalid width")?;
-        let height = height.parse().map_err(|_| "invalid height")?;
-
-        Ok(ScreenDimensions(width, height))
-    }
-}
-
-impl Default for ScreenDimensions {
-    fn default() -> Self {
-        ScreenDimensions(800, 600)
-    }
-}
-
 #[derive(Debug, Rand)]
-enum FractalType {
+pub enum FractalType {
     Mandelbrot,
     Julia,
-}
-
-fn is_power_of_four(n: u32) -> bool {
-    n.count_ones() == 1 && n.trailing_zeros() % 2 == 0
 }
 
 /// Find a good target point that will not be a black area:
@@ -145,17 +63,17 @@ fn is_power_of_four(n: u32) -> bool {
 ///   - create an edge image of the first grayscaled image
 ///   - find the nearest white point on the edged image starting from the previous black point
 fn find_target_point<F, R>(rng: &mut R,
-                      fractal: &F,
-                      camera: &Camera,
-                      dimensions: (u32, u32))
-                      -> Option<(u32, u32)>
+                           fractal: &F,
+                           camera: &Camera,
+                           dimensions: (u32, u32))
+                           -> Option<(u32, u32)>
 where
     F: Fractal,
     R: Rng
 {
     let (width, height) = dimensions;
 
-    let grayscaled = produce_image(fractal, camera, dimensions, |i| image::Rgb { data: [i; 3] });
+    let grayscaled = produce_image(fractal, camera, dimensions, |i| Rgb { data: [i; 3] });
     let blurred = imageops::blur(&grayscaled, 10.0);
     let black_point = {
         let start = (rng.gen_range(0, width), rng.gen_range(0, height));
@@ -175,22 +93,14 @@ fn produce_debug_image<F>(fractal: &F,
 where
     F: Fractal
 {
-    let grayscaled = produce_image(fractal, camera, dimensions, |i| image::Rgb { data: [i; 3] });
+    let grayscaled = produce_image(fractal, camera, dimensions, |i| Rgb { data: [i; 3] });
     let image = edges(&grayscaled);
     image.save(format!("./spotted-area-{:03}.png", n)).unwrap();
 }
 
-fn main() {
-    let settings = Settings::from_args();
-
-    if !is_power_of_four(settings.antialiazing) {
-        eprintln!("The specified antialiazing must be a power of four");
-        ::std::process::exit(1);
-    }
-
+pub fn generate(settings: Settings) -> RgbImage {
     let mut rng = {
-        let datetime = settings.date_seed.unwrap_or(Utc::now());
-        let datetime = floor_to_hour(datetime).expect("unable to floor to hour the datetime");
+        let datetime = settings.date_seed.unwrap_or_default();
 
         println!("{:?}", datetime);
 
@@ -201,11 +111,11 @@ fn main() {
         StdRng::from_seed(&[hash as usize])
     };
 
-    let dimensions = settings.screen_dimensions.unwrap_or_default().tuple();
+    let dimensions = settings.screen_dimensions.unwrap_or(ScreenDimensions(800, 600)).as_tuple();
     let (width, height) = dimensions;
     let mut camera = Camera::new([width as f64, height as f64]);
 
-    let (fractal, mut zoom_divisions): (Box<Fractal>, _) = match rng.gen() {
+    let (fractal, mut zoom_steps): (Box<Fractal>, _) = match rng.gen() {
         FractalType::Mandelbrot => {
             println!("Mandelbrot");
 
@@ -233,13 +143,13 @@ fn main() {
             println!("Julia ({}, {})", re, im);
 
             let fractal = Julia::new(re, im);
-            let zoom_divisions = rng.gen_range(0, 40);
+            let zoom_steps = rng.gen_range(0, 40);
 
-            (Box::new(fractal), zoom_divisions)
+            (Box::new(fractal), zoom_steps)
         },
     };
 
-    println!("zoom divisions {:?}", zoom_divisions);
+    let zoom_distr = Range::new(0.5, 1.0);
 
     // to zoom in the fractal:
     //   - find a good target point using the current camera
@@ -248,14 +158,15 @@ fn main() {
     //     or a target point can't be found
     while let Some((x, y)) = find_target_point(&mut rng, &fractal, &camera, dimensions) {
         let zoom = camera.zoom;
-        camera.target_on([x as f64, y as f64], zoom * 0.5); // FIXME handle overflow
+        let zoom_multiplier = zoom_distr.ind_sample(&mut rng);
+        camera.target_on([x as f64, y as f64], zoom * zoom_multiplier); // FIXME handle overflow
 
         if settings.produce_debug_images {
-            produce_debug_image(&fractal, &camera, dimensions, zoom_divisions);
+            produce_debug_image(&fractal, &camera, dimensions, zoom_steps);
         }
 
-        zoom_divisions -= 1;
-        if zoom_divisions == 0 { break }
+        zoom_steps -= 1;
+        if zoom_steps == 0 { break }
     }
 
     println!("camera: {:#?}", camera);
@@ -271,15 +182,15 @@ fn main() {
 
     let painter = |i| {
         let color = gradient.get(i as f32 / 255.0);
-        image::Rgb { data: color.into_pixel() }
+        Rgb { data: color.into_pixel() }
     };
 
-    let aa = settings.antialiazing as f64;
+    let Antialiazing(antialiazing) = settings.antialiazing;
+    let aa = antialiazing as f64;
+
     let (bwidth, bheight) = (width * aa as u32, height * aa as u32);
     camera.screen_size = [bwidth as f64, bheight as f64];
 
     let image = produce_image(&fractal, &camera, (bwidth, bheight), painter);
-    let image = imageops::resize(&image, width, height, FilterType::Triangle);
-
-    image.save("./image.png").unwrap();
+    imageops::resize(&image, width, height, FilterType::Triangle)
 }
