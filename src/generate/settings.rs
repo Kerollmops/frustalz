@@ -17,6 +17,6 @@ pub struct Settings {
     pub screen_dimensions: Option<ScreenDimensions>,
 
     /// Whether the program produce all images while diving in the fractal.
-    #[structopt(long = "produce-debug-images", default_value = "true")]
-    pub produce_debug_images: bool,
+    #[structopt(long = "no-debug-images")]
+    pub no_debug_images: bool,
 }

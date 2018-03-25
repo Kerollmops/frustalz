@@ -161,7 +161,7 @@ pub fn generate(settings: Settings) -> RgbImage {
         let zoom_multiplier = zoom_distr.ind_sample(&mut rng);
         camera.target_on([x as f64, y as f64], zoom * zoom_multiplier); // FIXME handle overflow
 
-        if settings.produce_debug_images {
+        if !settings.no_debug_images {
             produce_debug_image(&fractal, &camera, dimensions, zoom_steps);
         }
 
