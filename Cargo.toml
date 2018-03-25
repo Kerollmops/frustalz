@@ -13,5 +13,6 @@ pathfinding = "0.6"
 structopt = "0.2"
 chrono = "0.4"
 
-[profile.release]
-debug = true
+[features]
+default = []
+produce-debug-images = []

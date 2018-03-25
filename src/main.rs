@@ -90,6 +90,48 @@ fn is_power_of_four(n: u32) -> bool {
     n.count_ones() == 1 && n.trailing_zeros() % 2 == 0
 }
 
+/// Find a good target point that will not be a black area:
+///   - create a grayscale image
+///   - blur the grayscale image
+///   - find the nearest black point
+///   - create an edge image of the first grayscaled image
+///   - find the nearest white point on the edged image starting from the previous black point
+fn find_target_point<F, R>(rng: &mut R,
+                      fractal: &F,
+                      camera: &Camera,
+                      dimensions: (u32, u32))
+                      -> Option<(u32, u32)>
+where
+    F: Fractal,
+    R: Rng
+{
+    let (width, height) = dimensions;
+
+    let grayscaled = produce_image(fractal, camera, dimensions, |i| image::Rgb { data: [i; 3] });
+    let blurred = imageops::blur(&grayscaled, 10.0);
+    let black_point = {
+        let start = (rng.gen_range(0, width), rng.gen_range(0, height));
+        find_point(start, &blurred, |p| p.data[0] <= 128)
+    };
+
+    black_point.and_then(|black_point| {
+        let edged = edges(&grayscaled);
+        find_point(black_point, &edged, |p| p.data[0] >= 128)
+    })
+}
+
+fn produce_debug_image<F>(fractal: &F,
+                          camera: &Camera,
+                          dimensions: (u32, u32),
+                          n: usize)
+where
+    F: Fractal
+{
+    let grayscaled = produce_image(fractal, camera, dimensions, |i| image::Rgb { data: [i; 3] });
+    let image = edges(&grayscaled);
+    image.save(format!("./spotted-area-{:03}.png", n)).unwrap();
+}
+
 fn main() {
     let settings = Settings::from_args();
 
@@ -115,14 +157,14 @@ fn main() {
     let (width, height) = dimensions;
     let mut camera = Camera::new([width as f64, height as f64]);
 
-    let (fractal, zoom): (Box<Fractal>, _) = match rng.gen() {
+    let (fractal, mut zoom_divisions): (Box<Fractal>, _) = match rng.gen() {
         FractalType::Mandelbrot => {
-            let zoom = rng.gen_range(10e-7, 10e-4);
-            let mandelbrot = Mandelbrot::new();
-
             println!("Mandelbrot");
 
-            (Box::new(mandelbrot), zoom)
+            let fractal = Mandelbrot::new();
+            let zoom_divisions = rng.gen_range(3, 40);
+
+            (Box::new(fractal), zoom_divisions)
         },
         FractalType::Julia => {
             // https://upload.wikimedia.org/wikipedia/commons/a/a9/Julia-Teppich.png
@@ -140,49 +182,35 @@ fn main() {
             let gradient = sub_gradient.gradient();
             let ComplexPalette(Complex64 { re, im }) = gradient.get(rng.gen());
 
-            let zoom = 1.0;
-
             println!("Julia ({}, {})", re, im);
 
-            let julia = Julia::new(re, im);
+            let fractal = Julia::new(re, im);
+            let zoom_divisions = rng.gen_range(0, 40);
 
-            (Box::new(julia), zoom)
+            (Box::new(fractal), zoom_divisions)
         },
     };
 
-    // to find a good target point that will not be a black area:
-    // - create a grayscale image
-    // - blur the grayscale image
-    // - find the nearest black point
-    // - create an edge image of the first grayscaled image
-    // - find the nearest white point on the edged image starting from the previous black point
-    let target_point = {
-        let grayscaled = produce_image(&fractal, &camera, dimensions, |i| image::Rgb { data: [i; 3] });
-        let blurred = imageops::blur(&grayscaled, 10.0);
-        let black_point = {
-            let start = (rng.gen_range(0, width), rng.gen_range(0, height));
-            find_point(start, &blurred, |p| p.data[0] <= 128)
-        };
-        black_point.and_then(|black_point| {
-            let edged = edges(&grayscaled);
-            find_point(black_point, &edged, |p| p.data[0] >= 128)
-        })
-    };
+    println!("zoom divisions {:?}", zoom_divisions);
 
-    if let Some((x, y)) = target_point {
-        let center = camera.screen_to_world([x as f64, y as f64]);
-        println!("position: {:?}", center);
-        println!("zoom: {:?}", zoom);
+    // to zoom in the fractal:
+    //   - find a good target point using the current camera
+    //   - zoom using the camera into the current image
+    //   - repeat the first step until the max number of iteration is reached
+    //     or a target point can't be found
+    while let Some((x, y)) = find_target_point(&mut rng, &fractal, &camera, dimensions) {
+        let zoom = camera.zoom;
+        camera.target_on([x as f64, y as f64], zoom * 0.5); // FIXME handle overflow
+
+        if cfg!(feature = "produce-debug-images") {
+            produce_debug_image(&fractal, &camera, dimensions, zoom_divisions);
+        }
+
+        zoom_divisions -= 1;
+        if zoom_divisions == 0 { break }
     }
 
-    // create debug subimage
-    {
-        let grayscaled = produce_image(&fractal, &camera, dimensions, |i| image::Rgb { data: [i; 3] });
-        let image = edges(&grayscaled);
-        image.save("./spotted-area.png").unwrap();
-    }
-
-    let aa = settings.antialiazing as f64;
+    println!("camera: {:#?}", camera);
 
     let gradient = Gradient::with_domain(vec![
         (0.0,    LinSrgb::new(0.0,   0.027, 0.392)), // 0,    2.7,  39.2
@@ -198,13 +226,10 @@ fn main() {
         image::Rgb { data: color.into_pixel() }
     };
 
-    // once the targeted point has been found
-    // - zoom to the target spot
-    // - create a colorful image of this spot
+    let aa = settings.antialiazing as f64;
     let (bwidth, bheight) = (width * aa as u32, height * aa as u32);
     camera.screen_size = [bwidth as f64, bheight as f64];
-    let (x, y) = target_point.expect("no starting point found");
-    camera.target_on([x as f64 * aa, y as f64 * aa], zoom);
+
     let image = produce_image(&fractal, &camera, (bwidth, bheight), painter);
     let image = imageops::resize(&image, width, height, FilterType::Triangle);
 
