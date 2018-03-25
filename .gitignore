@@ -1,4 +1,7 @@
-
 /target/
 **/*.rs.bk
 Cargo.lock
+consumer_key
+consumer_secret
+access_key
+access_secret
