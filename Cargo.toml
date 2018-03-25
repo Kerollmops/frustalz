@@ -15,4 +15,3 @@ chrono = "0.4"
 
 [features]
 default = []
-produce-debug-images = []

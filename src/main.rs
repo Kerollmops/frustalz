@@ -10,6 +10,7 @@ extern crate chrono;
 #[macro_use] extern crate structopt;
 extern crate fractalz;
 
+use std::str::FromStr;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
@@ -78,6 +79,53 @@ struct Settings {
     /// Antialiazing used for the images generated (a power of 4).
     #[structopt(long = "antialiazing", default_value = "4")]
     antialiazing: u32,
+
+    /// Screen dimensions used for all image generations.
+    #[structopt(long = "screen-dimensions", default_value = "800x600")]
+    screen_dimensions: Option<ScreenDimensions>,
+
+    /// Whether the program produce all images while diving in the fractal.
+    #[structopt(long = "produce-debug-images", default_value = "true")]
+    produce_debug_images: bool,
+}
+
+#[derive(Debug, Copy, Clone)]
+struct ScreenDimensions(u32, u32);
+
+impl ScreenDimensions {
+    fn tuple(&self) -> (u32, u32) {
+        let ScreenDimensions(width, height) = *self;
+        (width, height)
+    }
+}
+
+impl FromStr for ScreenDimensions {
+    type Err = &'static str;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.trim();
+
+        let mut splitted = s.split('x');
+
+        let invalid_msg = "invalid dimension format";
+
+        let width = splitted.next().ok_or(invalid_msg)?;
+        let height = splitted.next().ok_or(invalid_msg)?;
+        if splitted.next().is_some() {
+            return Err(invalid_msg)
+        }
+
+        let width = width.parse().map_err(|_| "invalid width")?;
+        let height = height.parse().map_err(|_| "invalid height")?;
+
+        Ok(ScreenDimensions(width, height))
+    }
+}
+
+impl Default for ScreenDimensions {
+    fn default() -> Self {
+        ScreenDimensions(800, 600)
+    }
 }
 
 #[derive(Debug, Rand)]
@@ -153,7 +201,7 @@ fn main() {
         StdRng::from_seed(&[hash as usize])
     };
 
-    let dimensions = (800, 600);
+    let dimensions = settings.screen_dimensions.unwrap_or_default().tuple();
     let (width, height) = dimensions;
     let mut camera = Camera::new([width as f64, height as f64]);
 
@@ -202,7 +250,7 @@ fn main() {
         let zoom = camera.zoom;
         camera.target_on([x as f64, y as f64], zoom * 0.5); // FIXME handle overflow
 
-        if cfg!(feature = "produce-debug-images") {
+        if settings.produce_debug_images {
             produce_debug_image(&fractal, &camera, dimensions, zoom_divisions);
         }
 
