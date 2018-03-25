@@ -24,7 +24,7 @@ fn image_to_png(image: RgbImage) -> Vec<u8> {
 
     {
         let mut encoder = Encoder::new(&mut out, width, height);
-        encoder.set(png::ColorType::RGB).set(png::BitDepth::Sixteen);
+        encoder.set(png::ColorType::RGB).set(png::BitDepth::Eight);
 
         let mut writer = encoder.write_header().unwrap();
 
@@ -38,20 +38,30 @@ fn main() {
     let settings = Settings::from_args();
     let mut core = reactor::Core::new().unwrap();
 
+    let consumer_key = include_str!("consumer_key").trim();
+    let consumer_secret = include_str!("consumer_secret").trim();
+    let access_key = include_str!("access_key").trim();
+    let access_secret = include_str!("access_secret").trim();
+
     let token = Token::Access {
-        consumer: KeyPair::new(include_str!("consumer_key"), include_str!("consumer_secret")),
-        access: KeyPair::new(include_str!("access_key"), include_str!("access_secret")),
+        consumer: KeyPair::new(consumer_key, consumer_secret),
+        access: KeyPair::new(access_key, access_secret),
     };
     let handle = core.handle();
 
-    let image = generate(settings);
-    let image = image_to_png(image);
+    if let Err(err) = core.run(egg_mode::verify_tokens(&token, &handle)) {
+        eprintln!("{}", err);
+    }
+    else {
+        let image = generate(settings);
+        let image = image_to_png(image);
 
-    let builder = UploadBuilder::new(image, media_types::image_png());
-    let media_handle = core.run(builder.call(&token, &handle)).unwrap();
+        let builder = UploadBuilder::new(image, media_types::image_png());
+        let media_handle = core.run(builder.call(&token, &handle)).unwrap();
 
-    let draft = DraftTweet::new("Hey, check out this!").media_ids(&[media_handle.id]);
-    let tweet = core.run(draft.send(&token, &handle)).unwrap();
+        let draft = DraftTweet::new("Hey, check out this!").media_ids(&[media_handle.id]);
+        let tweet = core.run(draft.send(&token, &handle)).unwrap();
 
-    println!("{:?}", tweet);
+        println!("{:?}", tweet);
+    }
 }
