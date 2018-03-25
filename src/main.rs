@@ -10,9 +10,6 @@ extern crate chrono;
 #[macro_use] extern crate structopt;
 extern crate fractalz;
 
-mod complex_palette;
-mod sub_gradient;
-
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
@@ -31,43 +28,8 @@ use chrono::{Utc, DateTime, Timelike};
 use fractalz::Fractal;
 use fractalz::{Julia, Mandelbrot};
 use fractalz::Camera;
-use complex_palette::ComplexPalette;
-use sub_gradient::SubGradient;
-
-fn edges(image: &RgbImage) -> RgbImage {
-    let kernel = [-1.0, -1.0, -1.0,
-                  -1.0,  8.0, -1.0,
-                  -1.0, -1.0, -1.0];
-
-    imageops::filter3x3(image, &kernel)
-}
-
-fn produce_image<F, C>(fractal: &F,
-                       camera: &Camera,
-                       dimensions: (u32, u32),
-                       coloriser: C)
-                       -> RgbImage
-where
-    F: Fractal + ?Sized,
-    C: Fn(u8) -> image::Rgb<u8>
-{
-    let (width, height) = dimensions;
-    let mut image = RgbImage::new(width, height);
-
-    for x in 0..width {
-        for y in 0..height {
-            let coord = (x, y);
-
-            let pos = [x as f64, y as f64];
-            let [x, y] = camera.screen_to_world(pos);
-            let i = fractal.iterations(x, y);
-
-            image[coord] = coloriser(i);
-        }
-    }
-
-    image
-}
+use fractalz::{ComplexPalette, SubGradient};
+use fractalz::{produce_image, edges};
 
 fn find_point<P>(start: (u32, u32),
                  image: &RgbImage,
@@ -99,16 +61,17 @@ where
     result.map(|(path, _)| *path.last().unwrap())
 }
 
-fn floor_to_hour(datetime: DateTime<Utc>) -> DateTime<Utc> {
+fn floor_to_hour(datetime: DateTime<Utc>) -> Option<DateTime<Utc>> {
     datetime
-        .with_minute(0).unwrap()
-        .with_second(0).unwrap()
-        .with_nanosecond(0).unwrap()
+        .with_minute(0)?
+        .with_second(0)?
+        .with_nanosecond(0)
 }
 
 #[derive(Debug, StructOpt)]
 struct Settings {
-    /// The date to use as a seed
+    /// The date to use as a seed,
+    /// the default is the current datetime rounded to the hour.
     #[structopt(long = "date-seed")]
     date_seed: Option<DateTime<Utc>>,
 
@@ -137,7 +100,7 @@ fn main() {
 
     let mut rng = {
         let datetime = settings.date_seed.unwrap_or(Utc::now());
-        let datetime = floor_to_hour(datetime);
+        let datetime = floor_to_hour(datetime).expect("unable to floor to hour the datetime");
 
         println!("{:?}", datetime);
 
@@ -206,20 +169,6 @@ fn main() {
         })
     };
 
-    let gradient = Gradient::with_domain(vec![
-        (0.0, LinSrgb::new(0.0, 0.027, 0.392)),     // 0, 2.7, 39.2
-        (0.16, LinSrgb::new(0.125, 0.42, 0.796)),   // 12.5, 42, 79.6
-        (0.42, LinSrgb::new(0.929, 1.0, 1.0)),      // 92.9, 100, 100
-        (0.6425, LinSrgb::new(1.0, 0.667, 0.0)),    // 100, 66.7, 0
-        (0.8575, LinSrgb::new(0.0, 0.008, 0.0)),    // 0, 0.8, 0
-        (1.0, LinSrgb::new(0.0, 0.0, 0.0)),         // 0, 0, 0
-    ]);
-
-    let colorizer = |i| {
-        let color = gradient.get(i as f32 / 255.0);
-        image::Rgb { data: color.into_pixel() }
-    };
-
     if let Some((x, y)) = target_point {
         let center = camera.screen_to_world([x as f64, y as f64]);
         println!("position: {:?}", center);
@@ -235,6 +184,20 @@ fn main() {
 
     let aa = settings.antialiazing as f64;
 
+    let gradient = Gradient::with_domain(vec![
+        (0.0,    LinSrgb::new(0.0,   0.027, 0.392)), // 0,    2.7,  39.2
+        (0.16,   LinSrgb::new(0.125, 0.42,  0.796)), // 12.5, 42,   79.6
+        (0.42,   LinSrgb::new(0.929, 1.0,   1.0)),   // 92.9, 100,  100
+        (0.6425, LinSrgb::new(1.0,   0.667, 0.0)),   // 100,  66.7, 0
+        (0.8575, LinSrgb::new(0.0,   0.008, 0.0)),   // 0,    0.8,  0
+        (1.0,    LinSrgb::new(0.0,   0.0,   0.0)),   // 0,    0,    0
+    ]);
+
+    let painter = |i| {
+        let color = gradient.get(i as f32 / 255.0);
+        image::Rgb { data: color.into_pixel() }
+    };
+
     // once the targeted point has been found
     // - zoom to the target spot
     // - create a colorful image of this spot
@@ -242,7 +205,7 @@ fn main() {
     camera.screen_size = [bwidth as f64, bheight as f64];
     let (x, y) = target_point.expect("no starting point found");
     camera.target_on([x as f64 * aa, y as f64 * aa], zoom);
-    let image = produce_image(&fractal, &camera, (bwidth, bheight), colorizer);
+    let image = produce_image(&fractal, &camera, (bwidth, bheight), painter);
     let image = imageops::resize(&image, width, height, FilterType::Triangle);
 
     image.save("./image.png").unwrap();

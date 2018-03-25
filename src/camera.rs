@@ -1,4 +1,4 @@
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct Camera {
     pub screen_size: [f64; 2],
     pub center: [f64; 2],

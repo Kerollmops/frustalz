@@ -1,6 +1,7 @@
 use num_complex::Complex64;
 use fractal::Fractal;
 
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Julia {
     c: Complex64,
 }
