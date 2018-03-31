@@ -7,7 +7,7 @@ pub use self::fractal_info::FractalInfo;
 use num_complex::Complex64;
 use rand::Rng;
 use rand::distributions::{Range, IndependentSample};
-use pathfinding::dijkstra;
+use pathfinding::dijkstra::dijkstra;
 use image_crate::{imageops, RgbImage, Rgb, FilterType};
 use fractal::{Fractal, Mandelbrot, Julia};
 use camera::Camera;
