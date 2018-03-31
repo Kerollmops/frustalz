@@ -1,4 +1,4 @@
-extern crate fractalz;
+extern crate frustalz;
 extern crate image;
 extern crate png;
 extern crate rand;
@@ -20,7 +20,7 @@ use egg_mode::{
     Token,
     KeyPair,
 };
-use fractalz::{
+use frustalz::{
     generate::{Generator, DateSeed},
     image::{Antialiazing, ScreenDimensions},
 };

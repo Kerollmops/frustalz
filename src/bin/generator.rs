@@ -1,4 +1,4 @@
-extern crate fractalz;
+extern crate frustalz;
 extern crate rand;
 #[macro_use] extern crate structopt;
 
@@ -6,7 +6,7 @@ use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
 use rand::{StdRng, SeedableRng};
 use structopt::StructOpt;
-use fractalz::{
+use frustalz::{
     generate::{Generator, DateSeed},
     image::{Antialiazing, ScreenDimensions},
 };
