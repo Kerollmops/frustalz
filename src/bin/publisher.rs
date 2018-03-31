@@ -119,7 +119,7 @@ fn main() {
         }
         generator.debug_images(!settings.no_debug_images);
 
-        let image = generator.generate();
+        let (info, image) = generator.generate();
 
         if settings.save_image {
             match image.save("./image.png") {
@@ -133,7 +133,8 @@ fn main() {
             let builder = UploadBuilder::new(image, media_types::image_png());
             let media_handle = core.run(builder.call(&token, &handle)).unwrap();
 
-            let draft = DraftTweet::new("Hey, check out this!").media_ids(&[media_handle.id]);
+            let message = info.to_string();
+            let draft = DraftTweet::new(message).media_ids(&[media_handle.id]);
             let tweet = core.run(draft.send(&token, &handle)).unwrap();
 
             println!("{:?}", tweet);

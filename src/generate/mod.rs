@@ -1,6 +1,8 @@
 mod date_seed;
+mod fractal_info;
 
 pub use self::date_seed::DateSeed;
+pub use self::fractal_info::FractalInfo;
 
 use num_complex::Complex64;
 use rand::Rng;
@@ -44,7 +46,7 @@ where
     result.map(|(path, _)| *path.last().unwrap())
 }
 
-#[derive(Debug, Rand)]
+#[derive(Debug, Copy, Clone, Rand)]
 pub enum FractalType {
     Mandelbrot,
     Julia,
@@ -132,46 +134,43 @@ impl<R: Rng> Generator<R> {
         self
     }
 
-    pub fn generate(mut self) -> RgbImage {
+    pub fn generate(mut self) -> (FractalInfo, RgbImage) {
         let dimensions = self.dive_dimensions.unwrap_or(ScreenDimensions(500, 500)).as_tuple();
         let antialiazing: u32 = self.antialiazing.unwrap_or(Antialiazing::new(4).unwrap()).into();
 
         let (width, height) = dimensions;
         let mut camera = Camera::new([width as f64, height as f64]);
 
-        let (fractal, mut zoom_steps): (Box<Fractal + Sync>, _) = match self.rng.gen() {
-            FractalType::Mandelbrot => {
-                println!("Mandelbrot");
+        let (fractal, fractal_type, domain, mut zoom_steps): (Box<Fractal + Sync>, _, _, _) =
+            match self.rng.gen() {
+                FractalType::Mandelbrot => {
+                    let fractal = Mandelbrot::new();
+                    let zoom_divisions = self.rng.gen_range(3, 40);
 
-                let fractal = Mandelbrot::new();
-                let zoom_divisions = self.rng.gen_range(3, 40);
+                    (Box::new(fractal), FractalType::Mandelbrot, Complex64::new(0.0, 0.0), zoom_divisions)
+                },
+                FractalType::Julia => {
+                    // https://upload.wikimedia.org/wikipedia/commons/a/a9/Julia-Teppich.png
+                    let sub_gradients = Gradient::new(vec![
+                        SubGradient::new(ComplexPalette::new(-0.8,  0.4), ComplexPalette::new(-0.8,  0.0)),
+                        SubGradient::new(ComplexPalette::new(-0.6,  0.8), ComplexPalette::new(-0.6,  0.6)),
+                        SubGradient::new(ComplexPalette::new(-0.4,  0.8), ComplexPalette::new(-0.4,  0.6)),
+                        SubGradient::new(ComplexPalette::new(-0.2,  1.0), ComplexPalette::new(-0.2,  0.8)),
+                        SubGradient::new(ComplexPalette::new( 0.0,  1.0), ComplexPalette::new( 0.0,  0.8)),
+                        SubGradient::new(ComplexPalette::new( 0.19, 0.8), ComplexPalette::new( 0.19, 0.6)),
+                        SubGradient::new(ComplexPalette::new( 0.49, 0.6), ComplexPalette::new( 0.49, 0.2)),
+                    ]);
 
-                (Box::new(fractal), zoom_divisions)
-            },
-            FractalType::Julia => {
-                // https://upload.wikimedia.org/wikipedia/commons/a/a9/Julia-Teppich.png
-                let sub_gradients = Gradient::new(vec![
-                    SubGradient::new(ComplexPalette::new(-0.8,  0.4), ComplexPalette::new(-0.8,  0.0)),
-                    SubGradient::new(ComplexPalette::new(-0.6,  0.8), ComplexPalette::new(-0.6,  0.6)),
-                    SubGradient::new(ComplexPalette::new(-0.4,  0.8), ComplexPalette::new(-0.4,  0.6)),
-                    SubGradient::new(ComplexPalette::new(-0.2,  1.0), ComplexPalette::new(-0.2,  0.8)),
-                    SubGradient::new(ComplexPalette::new( 0.0,  1.0), ComplexPalette::new( 0.0,  0.8)),
-                    SubGradient::new(ComplexPalette::new( 0.19, 0.8), ComplexPalette::new( 0.19, 0.6)),
-                    SubGradient::new(ComplexPalette::new( 0.49, 0.6), ComplexPalette::new( 0.49, 0.2)),
-                ]);
+                    let sub_gradient = sub_gradients.get(self.rng.gen());
+                    let gradient = sub_gradient.gradient();
+                    let ComplexPalette(Complex64 { re, im }) = gradient.get(self.rng.gen());
 
-                let sub_gradient = sub_gradients.get(self.rng.gen());
-                let gradient = sub_gradient.gradient();
-                let ComplexPalette(Complex64 { re, im }) = gradient.get(self.rng.gen());
+                    let fractal = Julia::new(re, im);
+                    let zoom_steps = self.rng.gen_range(0, 40);
 
-                println!("Julia ({}, {})", re, im);
-
-                let fractal = Julia::new(re, im);
-                let zoom_steps = self.rng.gen_range(0, 40);
-
-                (Box::new(fractal), zoom_steps)
-            },
-        };
+                    (Box::new(fractal), FractalType::Julia, Complex64::new(re, im), zoom_steps)
+                },
+            };
 
         let zoom_distr = Range::new(0.5, 1.0);
 
@@ -217,6 +216,15 @@ impl<R: Rng> Generator<R> {
         camera.screen_size = [bwidth as f64, bheight as f64];
 
         let image = produce_image(&fractal, &camera, (bwidth, bheight), painter);
-        imageops::resize(&image, width, height, FilterType::Triangle)
+        let image = imageops::resize(&image, width, height, FilterType::Triangle);
+
+        let info = FractalInfo {
+            fractal_type,
+            domain,
+            position: camera.center,
+            zoom: camera.zoom
+        };
+
+        (info, image)
     }
 }

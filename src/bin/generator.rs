@@ -61,7 +61,9 @@ fn main() {
     }
     generator.debug_images(!settings.no_debug_images);
 
-    let image = generator.generate();
+    let (info, image) = generator.generate();
+
+    println!("{}", info);
 
     match image.save("./image.png") {
         Ok(_) => println!("image saved to \"./image.png\""),
