@@ -2,13 +2,14 @@
 #![feature(option_filter)]
 
 extern crate num_complex;
-extern crate image as image_crate;
 extern crate palette;
 extern crate rand;
 #[macro_use] extern crate rand_derive;
 extern crate pathfinding;
-extern crate structopt;
+extern crate rayon;
 extern crate chrono;
+extern crate image as image_crate;
+extern crate structopt;
 
 pub mod fractal;
 pub mod generate;

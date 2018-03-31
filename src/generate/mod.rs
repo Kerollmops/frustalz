@@ -62,7 +62,7 @@ fn find_target_point<F, R>(rng: &mut R,
                            dimensions: (u32, u32))
                            -> Option<(u32, u32)>
 where
-    F: Fractal,
+    F: Fractal + Sync,
     R: Rng
 {
     let (width, height) = dimensions;
@@ -85,7 +85,7 @@ fn produce_debug_image<F>(fractal: &F,
                           dimensions: (u32, u32),
                           n: usize)
 where
-    F: Fractal
+    F: Fractal + Sync
 {
     let grayscaled = produce_image(fractal, camera, dimensions, |i| Rgb { data: [i; 3] });
     let image = edges(&grayscaled);
@@ -132,7 +132,7 @@ impl<R: Rng> Generator<R> {
         let (width, height) = dimensions;
         let mut camera = Camera::new([width as f64, height as f64]);
 
-        let (fractal, mut zoom_steps): (Box<Fractal>, _) = match self.rng.gen() {
+        let (fractal, mut zoom_steps): (Box<Fractal + Sync>, _) = match self.rng.gen() {
             FractalType::Mandelbrot => {
                 println!("Mandelbrot");
 

@@ -9,6 +9,7 @@ pub use self::sub_gradient::SubGradient;
 pub use self::screen_dimensions::ScreenDimensions;
 
 use image_crate::{imageops, RgbImage, Rgb};
+use rayon::prelude::*;
 use camera::Camera;
 use fractal::Fractal;
 
@@ -26,23 +27,28 @@ pub fn produce_image<F, C>(fractal: &F,
                            painter: C)
                            -> RgbImage
 where
-    F: Fractal + ?Sized,
-    C: Fn(u8) -> Rgb<u8>
+    F: Fractal + ?Sized + Sync,
+    C: Fn(u8) -> Rgb<u8> + Sync + Send
 {
     let (width, height) = dimensions;
     let mut image = RgbImage::new(width, height);
 
-    for x in 0..width {
-        for y in 0..height {
-            let coord = (x, y);
+    image.par_chunks_mut(3)
+        .enumerate()
+        .for_each(|(i, p)| {
+            let x = i as u32 % width;
+            let y = (i as u32 - x) / width;
 
             let pos = [x as f64, y as f64];
             let [x, y] = camera.screen_to_world(pos);
             let i = fractal.iterations(x, y);
 
-            image[coord] = painter(i);
-        }
-    }
+            // is there a way to clean up this ?
+            let data = painter(i).data;
+            p[0] = data[0];
+            p[1] = data[1];
+            p[2] = data[2];
+        });
 
     image
 }
