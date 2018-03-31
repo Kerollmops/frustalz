@@ -43,11 +43,8 @@ where
             let [x, y] = camera.screen_to_world(pos);
             let i = fractal.iterations(x, y);
 
-            // is there a way to clean up this ?
             let data = painter(i).data;
-            p[0] = data[0];
-            p[1] = data[1];
-            p[2] = data[2];
+            p.copy_from_slice(&data);
         });
 
     image
