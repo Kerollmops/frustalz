@@ -137,7 +137,9 @@ fn main() {
             let draft = DraftTweet::new(message).media_ids(&[media_handle.id]);
             let tweet = core.run(draft.send(&token, &handle)).unwrap();
 
-            println!("{:?}", tweet);
+            if let Some(url) = tweet.entities.urls.first().map(|u| &u.url) {
+                println!("tweet url: {}", url);
+            }
         }
     }
 }
