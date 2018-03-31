@@ -121,7 +121,7 @@ fn main() {
 
         let (info, image) = generator.generate();
 
-        if settings.save_image {
+        if settings.save_image || settings.dry_run {
             match image.save("./image.png") {
                 Ok(_) => println!("image saved to \"./image.png\""),
                 Err(e) => eprintln!("can not save image to \"./image.png\": {}", e),
