@@ -13,8 +13,7 @@ use frustalz::{
 
 #[derive(Debug, Clone, StructOpt)]
 pub struct Settings {
-    /// The date to use as a seed rounded to the hour,
-    /// the default is the current datetime.
+    /// The date to use as a seed rounded to the hour.
     #[structopt(long = "date-seed")]
     pub date_seed: Option<DateSeed>,
 
