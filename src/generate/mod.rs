@@ -95,7 +95,8 @@ where
 #[derive(Debug)]
 pub struct Generator<R: Rng> {
     rng: R,
-    dimensions: Option<ScreenDimensions>,
+    dive_dimensions: Option<ScreenDimensions>,
+    shot_dimensions: Option<ScreenDimensions>,
     antialiazing: Option<Antialiazing>,
     debug_images: bool,
 }
@@ -104,14 +105,20 @@ impl<R: Rng> Generator<R> {
     pub fn new(rng: R) -> Self {
         Self {
             rng: rng,
-            dimensions: None,
+            dive_dimensions: None,
+            shot_dimensions: None,
             antialiazing: None,
             debug_images: true,
         }
     }
 
-    pub fn dimensions(&mut self, dimensions: ScreenDimensions) -> &mut Self {
-        self.dimensions = Some(dimensions);
+    pub fn dive_dimensions(&mut self, dimensions: ScreenDimensions) -> &mut Self {
+        self.dive_dimensions = Some(dimensions);
+        self
+    }
+
+    pub fn shot_dimensions(&mut self, dimensions: ScreenDimensions) -> &mut Self {
+        self.shot_dimensions = Some(dimensions);
         self
     }
 
@@ -126,7 +133,7 @@ impl<R: Rng> Generator<R> {
     }
 
     pub fn generate(mut self) -> RgbImage {
-        let dimensions = self.dimensions.unwrap_or(ScreenDimensions(800, 600)).as_tuple();
+        let dimensions = self.dive_dimensions.unwrap_or(ScreenDimensions(500, 500)).as_tuple();
         let antialiazing: u32 = self.antialiazing.unwrap_or(Antialiazing::new(4).unwrap()).into();
 
         let (width, height) = dimensions;
@@ -186,7 +193,6 @@ impl<R: Rng> Generator<R> {
             if zoom_steps == 0 { break }
         }
 
-        println!("camera: {:#?}", camera);
 
         let gradient = Gradient::with_domain(vec![
             (0.0,    LinSrgb::new(0.0,   0.027, 0.392)), // 0,    2.7,  39.2
@@ -201,6 +207,9 @@ impl<R: Rng> Generator<R> {
             let color = gradient.get(i as f32 / 255.0);
             Rgb { data: color.into_pixel() }
         };
+
+        let dimensions = self.shot_dimensions.unwrap_or(ScreenDimensions(800, 600)).as_tuple();
+        let (width, height) = dimensions;
 
         let aa = antialiazing as f64;
 

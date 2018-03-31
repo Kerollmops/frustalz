@@ -21,9 +21,13 @@ pub struct Settings {
     #[structopt(long = "antialiazing")]
     pub antialiazing: Option<Antialiazing>,
 
-    /// Screen dimensions used for all image generations.
-    #[structopt(long = "screen-dimensions")]
-    pub screen_dimensions: Option<ScreenDimensions>,
+    /// Dimensions of images used to dive into fractals.
+    #[structopt(long = "dive-dimensions")]
+    pub dive_dimensions: Option<ScreenDimensions>,
+
+    /// Dimensions of the final image generated.
+    #[structopt(long = "shot-dimensions")]
+    pub shot_dimensions: Option<ScreenDimensions>,
 
     /// Whether the program produce all images while diving in the fractal.
     #[structopt(long = "no-debug-images")]
@@ -46,8 +50,11 @@ fn main() {
 
     let mut generator = Generator::new(rng);
 
-    if let Some(dims) = settings.screen_dimensions {
-        generator.dimensions(dims);
+    if let Some(dims) = settings.shot_dimensions {
+        generator.shot_dimensions(dims);
+    }
+    if let Some(dims) = settings.dive_dimensions {
+        generator.dive_dimensions(dims);
     }
     if let Some(anti) = settings.antialiazing {
         generator.antialiazing(anti);

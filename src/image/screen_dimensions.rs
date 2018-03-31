@@ -29,6 +29,10 @@ impl FromStr for ScreenDimensions {
         let width = width.parse().map_err(|_| "invalid width")?;
         let height = height.parse().map_err(|_| "invalid height")?;
 
+        if width == 0 || height == 0 {
+            return Err("dimensions cannot be zero")
+        }
+
         Ok(ScreenDimensions(width, height))
     }
 }
