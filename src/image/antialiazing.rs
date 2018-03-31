@@ -5,7 +5,19 @@ fn is_power_of_four(n: u32) -> bool {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Antialiazing(pub u32);
+pub struct Antialiazing(u32);
+
+impl Antialiazing {
+    pub fn new(value: u32) -> Option<Self> {
+        Some(value).filter(|&v| is_power_of_four(v)).map(Antialiazing)
+    }
+}
+
+impl From<Antialiazing> for u32 {
+    fn from(antialiazing: Antialiazing) -> Self {
+        antialiazing.0
+    }
+}
 
 impl FromStr for Antialiazing {
     type Err = &'static str;
@@ -13,10 +25,6 @@ impl FromStr for Antialiazing {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let value = s.trim().parse().map_err(|_| "invalid number")?;
 
-        if !is_power_of_four(value) {
-            return Err("number is not a power of 4")
-        }
-
-        Ok(Antialiazing(value))
+        Antialiazing::new(value).ok_or("number is not a power of 4")
     }
 }

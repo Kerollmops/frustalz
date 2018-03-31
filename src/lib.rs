@@ -1,4 +1,5 @@
 #![feature(slice_patterns)]
+#![feature(option_filter)]
 
 extern crate num_complex;
 extern crate image as image_crate;
@@ -6,7 +7,7 @@ extern crate palette;
 extern crate rand;
 #[macro_use] extern crate rand_derive;
 extern crate pathfinding;
-#[macro_use] extern crate structopt;
+extern crate structopt;
 extern crate chrono;
 
 pub mod fractal;
