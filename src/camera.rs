@@ -25,8 +25,9 @@ impl Camera {
     ///
     /// `point` is the point in screen coordinates (`[0, width[`).
     pub fn target_on(&mut self, point: [f64; 2], zoom: f64) {
-        let [cx, cy] = self.center;
-        let [x, y] = self.screen_to_world(point);
+        let (cx, cy) = (self.center[0], self.center[1]);
+        let stow = self.screen_to_world(point);
+        let (x, y) = (stow[0], stow[1]);
 
         // https://stackoverflow.com/a/22700814/1941280
         //
@@ -48,9 +49,9 @@ impl Camera {
     ///
     /// `point` is the point in screen coordinates (`[0, width[`).
     pub fn screen_to_world(&self, point: [f64; 2]) -> [f64; 2] {
-        let [sx, sy] = self.screen_size;
-        let [cx, cy] = self.center;
-        let [x, y] = point;
+        let (sx, sy) = (self.screen_size[0], self.screen_size[1]);
+        let (cx, cy) = (self.center[0], self.center[1]);
+        let (x, y) = (point[0], point[1]);
 
         assert!(x >= 0.0 && x < sx, "x is outside screen domain coordinates");
         assert!(y >= 0.0 && y < sy, "y is outside screen domain coordinates");

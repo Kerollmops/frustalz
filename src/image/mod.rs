@@ -40,7 +40,8 @@ where
             let y = (i as u32 - x) / width;
 
             let pos = [x as f64, y as f64];
-            let [x, y] = camera.screen_to_world(pos);
+            let pos = camera.screen_to_world(pos);
+            let (x, y) = (pos[0], pos[1]);
             let i = fractal.iterations(x, y);
 
             let data = painter(i).data;

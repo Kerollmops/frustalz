@@ -9,7 +9,11 @@ pub struct Antialiazing(u32);
 
 impl Antialiazing {
     pub fn new(value: u32) -> Option<Self> {
-        Some(value).filter(|&v| is_power_of_four(v)).map(Antialiazing)
+        if is_power_of_four(value) {
+            Some(Antialiazing(value))
+        } else {
+            None
+        }
     }
 }
 

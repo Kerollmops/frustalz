@@ -1,6 +1,3 @@
-#![feature(slice_patterns)]
-#![feature(option_filter)]
-
 extern crate num_complex;
 extern crate palette;
 extern crate rand;

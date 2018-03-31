@@ -12,7 +12,7 @@ pub struct FractalInfo {
 
 impl fmt::Display for FractalInfo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let [x, y] = self.position;
+        let (x, y) = (self.position[0], self.position[1]);
 
         match self.fractal_type {
             FractalType::Julia => {
