@@ -180,6 +180,8 @@ impl<R: Rng> Generator<R> {
         //   - repeat the first step until the max number of iteration is reached
         //     or a target point can't be found
         while let Some((x, y)) = find_target_point(&mut self.rng, &fractal, &camera, dimensions) {
+            if zoom_steps == 0 { break }
+
             let zoom = camera.zoom;
             let zoom_multiplier = zoom_distr.ind_sample(&mut self.rng);
             camera.target_on([x as f64, y as f64], zoom * zoom_multiplier); // FIXME handle overflow
