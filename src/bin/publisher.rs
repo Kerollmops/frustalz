@@ -28,31 +28,31 @@ use tokio_core::reactor;
 
 #[derive(Debug, Clone, StructOpt)]
 pub struct Settings {
-    /// The date to use as a seed rounded to the hour.
+    /// The date to use as a seed rounded to the hour
     #[structopt(long = "date-seed")]
     pub date_seed: Option<DateSeed>,
 
-    /// Antialiazing used for the images generated (a power of 4).
+    /// Antialiazing used for the images generated (a power of 4)
     #[structopt(long = "antialiazing")]
     pub antialiazing: Option<Antialiazing>,
 
-    /// Generate the image without uploading it.
+    /// Generate the image without uploading it
     #[structopt(long = "dry-run")]
     pub dry_run: bool,
 
-    /// Generate the image and save it in a file.
+    /// Generate the image and save it in a file
     #[structopt(long = "save-image")]
     pub save_image: bool,
 
-    /// Dimensions of images used to dive into fractals.
+    /// Dimensions of images used to dive into fractals
     #[structopt(long = "dive-dimensions")]
     pub dive_dimensions: Option<ScreenDimensions>,
 
-    /// Dimensions of the final image generated.
+    /// Dimensions of the final image generated
     #[structopt(long = "shot-dimensions")]
     pub shot_dimensions: Option<ScreenDimensions>,
 
-    /// Whether the program produce all images while diving in the fractal.
+    /// Whether the program produce all images while diving in the fractal
     #[structopt(long = "no-debug-images")]
     pub no_debug_images: bool,
 }
