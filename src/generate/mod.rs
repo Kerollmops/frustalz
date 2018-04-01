@@ -152,13 +152,13 @@ impl<R: Rng> Generator<R> {
                 FractalType::Julia => {
                     // https://upload.wikimedia.org/wikipedia/commons/a/a9/Julia-Teppich.png
                     let sub_gradients = Gradient::new(vec![
-                        SubGradient::new(ComplexPalette::new(-0.8,  0.4), ComplexPalette::new(-0.8,  0.0)),
-                        SubGradient::new(ComplexPalette::new(-0.6,  0.8), ComplexPalette::new(-0.6,  0.6)),
-                        SubGradient::new(ComplexPalette::new(-0.4,  0.8), ComplexPalette::new(-0.4,  0.6)),
-                        SubGradient::new(ComplexPalette::new(-0.2,  1.0), ComplexPalette::new(-0.2,  0.8)),
-                        SubGradient::new(ComplexPalette::new( 0.0,  1.0), ComplexPalette::new( 0.0,  0.8)),
-                        SubGradient::new(ComplexPalette::new( 0.19, 0.8), ComplexPalette::new( 0.19, 0.6)),
-                        SubGradient::new(ComplexPalette::new( 0.49, 0.6), ComplexPalette::new( 0.49, 0.2)),
+                        SubGradient::new(ComplexPalette::new(-0.8,  0.3), ComplexPalette::new(-0.8,  0.15)),
+                        SubGradient::new(ComplexPalette::new(-0.6,  0.7), ComplexPalette::new(-0.6,  0.5)),
+                        SubGradient::new(ComplexPalette::new(-0.4,  0.65), ComplexPalette::new(-0.4,  0.6)),
+                        SubGradient::new(ComplexPalette::new(-0.2,  0.9), ComplexPalette::new(-0.2,  0.8)),
+                        SubGradient::new(ComplexPalette::new( 0.0,  1.0), ComplexPalette::new( 0.0,  0.7)),
+                        SubGradient::new(ComplexPalette::new( 0.19, 0.6), ComplexPalette::new( 0.19, 0.552)),
+                        SubGradient::new(ComplexPalette::new( 0.29, 0.6), ComplexPalette::new( 0.29, 0.55)),
                     ]);
 
                     let sub_gradient = sub_gradients.get(self.rng.gen());
@@ -191,7 +191,6 @@ impl<R: Rng> Generator<R> {
             }
 
             zoom_steps -= 1;
-            if zoom_steps == 0 { break }
         }
 
 
