@@ -48,8 +48,8 @@ where
 
 #[derive(Debug, Copy, Clone, Rand)]
 pub enum FractalType {
-    Mandelbrot,
     Julia,
+    Mandelbrot,
 }
 
 /// Find a good target point that will not be a black area:
@@ -143,24 +143,18 @@ impl<R: Rng> Generator<R> {
 
         let (fractal, fractal_type, domain, mut zoom_steps): (Box<Fractal + Sync>, _, _, _) =
             match self.rng.gen() {
-                FractalType::Mandelbrot => {
-                    let fractal = Mandelbrot::new();
-                    let zoom_divisions = self.rng.gen_range(3, 40);
-
-                    (Box::new(fractal), FractalType::Mandelbrot, Complex64::new(0.0, 0.0), zoom_divisions)
-                },
                 FractalType::Julia => {
                     // https://upload.wikimedia.org/wikipedia/commons/a/a9/Julia-Teppich.png
                     // http://www.karlsims.com/julia.html
                     let sub_gradients = Gradient::new(vec![
-                        SubGradient::new(ComplexPalette::new(-0.8,  0.3), ComplexPalette::new(-0.8,  0.15)),
-                        SubGradient::new(ComplexPalette::new(-0.6,  0.7), ComplexPalette::new(-0.6,  0.5)),
-                        SubGradient::new(ComplexPalette::new(-0.4,  0.65), ComplexPalette::new(-0.4,  0.6)),
-                        SubGradient::new(ComplexPalette::new(-0.2,  0.9), ComplexPalette::new(-0.2,  0.8)),
-                        SubGradient::new(ComplexPalette::new( 0.0,  1.0), ComplexPalette::new( 0.0,  0.7)),
-                        SubGradient::new(ComplexPalette::new( 0.19, 0.6), ComplexPalette::new( 0.19, 0.552)),
-                        SubGradient::new(ComplexPalette::new( 0.28, 0.01), ComplexPalette::new( 0.28, -0.01)),
-                        SubGradient::new(ComplexPalette::new( 0.29, 0.6), ComplexPalette::new( 0.29, 0.55)),
+                        SubGradient::new(ComplexPalette::new(-0.8,  0.3 ), ComplexPalette::new(-0.8,   0.15 )),
+                        SubGradient::new(ComplexPalette::new(-0.6,  0.7 ), ComplexPalette::new(-0.6,   0.5  )),
+                        SubGradient::new(ComplexPalette::new(-0.4,  0.65), ComplexPalette::new(-0.4,   0.6  )),
+                        SubGradient::new(ComplexPalette::new(-0.2,  0.9 ), ComplexPalette::new(-0.2,   0.8  )),
+                        SubGradient::new(ComplexPalette::new( 0.0,  1.0 ), ComplexPalette::new( 0.0,   0.7  )),
+                        SubGradient::new(ComplexPalette::new( 0.19, 0.6 ), ComplexPalette::new( 0.19,  0.552)),
+                        SubGradient::new(ComplexPalette::new( 0.28, 0.01), ComplexPalette::new( 0.28, -0.01 )),
+                        SubGradient::new(ComplexPalette::new( 0.29, 0.6 ), ComplexPalette::new( 0.29,  0.55 )),
                     ]);
 
                     let sub_gradient = sub_gradients.get(self.rng.gen());
@@ -168,13 +162,19 @@ impl<R: Rng> Generator<R> {
                     let ComplexPalette(Complex64 { re, im }) = gradient.get(self.rng.gen());
 
                     let fractal = Julia::new(re, im);
-                    let zoom_steps = self.rng.gen_range(0, 40);
+                    let zoom_steps = self.rng.gen_range(0, 100);
 
                     (Box::new(fractal), FractalType::Julia, Complex64::new(re, im), zoom_steps)
                 },
+                FractalType::Mandelbrot => {
+                    let fractal = Mandelbrot::new();
+                    let zoom_steps = self.rng.gen_range(20, 100);
+
+                    (Box::new(fractal), FractalType::Mandelbrot, Complex64::new(0.0, 0.0), zoom_steps)
+                },
             };
 
-        let zoom_distr = Range::new(0.5, 1.0);
+        let zoom_distr = Range::new(0.5, 0.8);
 
         // to zoom into the fractal:
         //   - find a good target point using the current camera
@@ -185,9 +185,9 @@ impl<R: Rng> Generator<R> {
             if zoom_steps == 0 { break }
             match find_target_point(&mut self.rng, &fractal, &camera, dimensions) {
                 Some((x, y)) => {
-                    let zoom = camera.zoom;
                     let zoom_multiplier = zoom_distr.ind_sample(&mut self.rng);
-                    camera.target_on([x as f64, y as f64], zoom * zoom_multiplier); // FIXME handle overflow
+                    let zoom = camera.zoom * zoom_multiplier; // FIXME handle overflow
+                    camera.target_on([x as f64, y as f64], zoom);
 
                     if self.debug_images {
                         produce_debug_image(&fractal, &camera, dimensions, zoom_steps);
@@ -198,7 +198,6 @@ impl<R: Rng> Generator<R> {
                 None => break,
             }
         }
-
 
         let gradient = Gradient::with_domain(vec![
             (0.0,    LinSrgb::new(0.0,   0.027, 0.392)), // 0,    2.7,  39.2
