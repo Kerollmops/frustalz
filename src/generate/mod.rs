@@ -97,9 +97,9 @@ where
 #[derive(Debug)]
 pub struct Generator<R: Rng> {
     rng: R,
-    dive_dimensions: Option<ScreenDimensions>,
-    shot_dimensions: Option<ScreenDimensions>,
-    antialiazing: Option<Antialiazing>,
+    dive_dimensions: ScreenDimensions,
+    shot_dimensions: ScreenDimensions,
+    antialiazing: Antialiazing,
     debug_images: bool,
 }
 
@@ -107,25 +107,25 @@ impl<R: Rng> Generator<R> {
     pub fn new(rng: R) -> Self {
         Self {
             rng: rng,
-            dive_dimensions: None,
-            shot_dimensions: None,
-            antialiazing: None,
+            dive_dimensions: ScreenDimensions(500, 500),
+            shot_dimensions: ScreenDimensions(800, 600),
+            antialiazing: Antialiazing::new(4).unwrap(),
             debug_images: true,
         }
     }
 
     pub fn dive_dimensions(&mut self, dimensions: ScreenDimensions) -> &mut Self {
-        self.dive_dimensions = Some(dimensions);
+        self.dive_dimensions = dimensions;
         self
     }
 
     pub fn shot_dimensions(&mut self, dimensions: ScreenDimensions) -> &mut Self {
-        self.shot_dimensions = Some(dimensions);
+        self.shot_dimensions = dimensions;
         self
     }
 
     pub fn antialiazing(&mut self, antialiazing: Antialiazing) -> &mut Self {
-        self.antialiazing = Some(antialiazing);
+        self.antialiazing = antialiazing;
         self
     }
 
@@ -135,8 +135,8 @@ impl<R: Rng> Generator<R> {
     }
 
     pub fn generate(mut self) -> (FractalInfo, RgbImage) {
-        let dimensions = self.dive_dimensions.unwrap_or(ScreenDimensions(500, 500)).as_tuple();
-        let antialiazing: u32 = self.antialiazing.unwrap_or(Antialiazing::new(4).unwrap()).into();
+        let dimensions = self.dive_dimensions.as_tuple();
+        let antialiazing: u32 = self.antialiazing.into();
 
         let (width, height) = dimensions;
         let mut camera = Camera::new([width as f64, height as f64]);
@@ -214,7 +214,7 @@ impl<R: Rng> Generator<R> {
             Rgb { data: color.into_pixel() }
         };
 
-        let dimensions = self.shot_dimensions.unwrap_or(ScreenDimensions(800, 600)).as_tuple();
+        let dimensions = self.shot_dimensions.as_tuple();
         let (width, height) = dimensions;
 
         let aa = antialiazing as f64;
