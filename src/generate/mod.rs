@@ -162,13 +162,13 @@ impl<R: Rng> Generator<R> {
                     let ComplexPalette(Complex64 { re, im }) = gradient.get(self.rng.gen());
 
                     let fractal = Julia::new(re, im);
-                    let zoom_steps = self.rng.gen_range(0, 100);
+                    let zoom_steps = self.rng.gen_range(0, 44);
 
                     (Box::new(fractal), FractalType::Julia, Complex64::new(re, im), zoom_steps)
                 },
                 FractalType::Mandelbrot => {
                     let fractal = Mandelbrot::new();
-                    let zoom_steps = self.rng.gen_range(20, 100);
+                    let zoom_steps = self.rng.gen_range(20, 44);
 
                     (Box::new(fractal), FractalType::Mandelbrot, Complex64::new(0.0, 0.0), zoom_steps)
                 },
@@ -186,7 +186,8 @@ impl<R: Rng> Generator<R> {
             match find_target_point(&mut self.rng, &fractal, &camera, dimensions) {
                 Some((x, y)) => {
                     let zoom_multiplier = zoom_distr.ind_sample(&mut self.rng);
-                    let zoom = camera.zoom * zoom_multiplier; // FIXME handle overflow
+                    let zoom = camera.zoom * zoom_multiplier;
+
                     camera.target_on([x as f64, y as f64], zoom);
 
                     if self.debug_images {
