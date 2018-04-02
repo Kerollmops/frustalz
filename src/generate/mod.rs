@@ -174,23 +174,27 @@ impl<R: Rng> Generator<R> {
 
         let zoom_distr = Range::new(0.5, 1.0);
 
-        // to zoom in the fractal:
+        // to zoom into the fractal:
         //   - find a good target point using the current camera
         //   - zoom using the camera into the current image
         //   - repeat the first step until the max number of iteration is reached
         //     or a target point can't be found
-        while let Some((x, y)) = find_target_point(&mut self.rng, &fractal, &camera, dimensions) {
+        loop {
             if zoom_steps == 0 { break }
+            match find_target_point(&mut self.rng, &fractal, &camera, dimensions) {
+                Some((x, y)) => {
+                    let zoom = camera.zoom;
+                    let zoom_multiplier = zoom_distr.ind_sample(&mut self.rng);
+                    camera.target_on([x as f64, y as f64], zoom * zoom_multiplier); // FIXME handle overflow
 
-            let zoom = camera.zoom;
-            let zoom_multiplier = zoom_distr.ind_sample(&mut self.rng);
-            camera.target_on([x as f64, y as f64], zoom * zoom_multiplier); // FIXME handle overflow
+                    if self.debug_images {
+                        produce_debug_image(&fractal, &camera, dimensions, zoom_steps);
+                    }
 
-            if self.debug_images {
-                produce_debug_image(&fractal, &camera, dimensions, zoom_steps);
+                    zoom_steps -= 1;
+                },
+                None => break,
             }
-
-            zoom_steps -= 1;
         }
 
 
