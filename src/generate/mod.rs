@@ -151,6 +151,7 @@ impl<R: Rng> Generator<R> {
                 },
                 FractalType::Julia => {
                     // https://upload.wikimedia.org/wikipedia/commons/a/a9/Julia-Teppich.png
+                    // http://www.karlsims.com/julia.html
                     let sub_gradients = Gradient::new(vec![
                         SubGradient::new(ComplexPalette::new(-0.8,  0.3), ComplexPalette::new(-0.8,  0.15)),
                         SubGradient::new(ComplexPalette::new(-0.6,  0.7), ComplexPalette::new(-0.6,  0.5)),
@@ -158,6 +159,7 @@ impl<R: Rng> Generator<R> {
                         SubGradient::new(ComplexPalette::new(-0.2,  0.9), ComplexPalette::new(-0.2,  0.8)),
                         SubGradient::new(ComplexPalette::new( 0.0,  1.0), ComplexPalette::new( 0.0,  0.7)),
                         SubGradient::new(ComplexPalette::new( 0.19, 0.6), ComplexPalette::new( 0.19, 0.552)),
+                        SubGradient::new(ComplexPalette::new( 0.28, 0.01), ComplexPalette::new( 0.28, -0.01)),
                         SubGradient::new(ComplexPalette::new( 0.29, 0.6), ComplexPalette::new( 0.29, 0.55)),
                     ]);
 
