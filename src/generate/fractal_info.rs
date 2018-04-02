@@ -18,13 +18,13 @@ impl fmt::Display for FractalInfo {
             FractalType::Julia => {
                 let Complex64 { re, im } = self.domain;
                 write!(f, "Here is the julia fractal in the domain ({:.3}, {:.3}), \
-                       focus is on the area ({:.3}, {:.3}) with the zoom set on {:.5}.",
-                        re, im, x, y, self.zoom)
+                       focus is on the area ({:.3}, {:.3}) with the zoom set on {:.3}x.",
+                        re, im, x, y, self.zoom.recip())
             },
             FractalType::Mandelbrot => {
                 write!(f, "Here is the mandelbrot fractal, \
-                       focus is on the area ({:.3}, {:.3}) with the zoom set on {:.5}.",
-                        x, y, self.zoom)
+                       focus is on the area ({:.3}, {:.3}) with the zoom set on {:.3}x.",
+                        x, y, self.zoom.recip())
             },
         }
     }
