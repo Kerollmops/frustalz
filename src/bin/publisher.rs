@@ -1,6 +1,5 @@
 extern crate frustalz;
 extern crate image;
-extern crate png;
 extern crate rand;
 #[macro_use] extern crate structopt;
 extern crate egg_mode;
@@ -10,10 +9,9 @@ extern crate futures;
 use std::io::BufWriter;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
-use png::{Encoder, HasParameters};
 use rand::{StdRng, SeedableRng};
 use structopt::StructOpt;
-use image::RgbImage;
+use image::{RgbImage, ImageResult, ImageFormat, DynamicImage};
 use egg_mode::{
     media::{UploadBuilder, media_types},
     tweet::DraftTweet,
@@ -57,22 +55,13 @@ pub struct Settings {
     pub no_debug_images: bool,
 }
 
-fn image_to_png(image: RgbImage) -> Vec<u8> {
-    let (width, height) = image.dimensions();
-    let buf = image.into_raw();
+fn image_to_png(image: RgbImage) -> ImageResult<Vec<u8>> {
+    let image = DynamicImage::ImageRgb8(image);
+    let mut buffer = BufWriter::new(Vec::new());
 
-    let mut out = BufWriter::new(Vec::new());
+    image.save(&mut buffer, ImageFormat::PNG)?;
 
-    {
-        let mut encoder = Encoder::new(&mut out, width, height);
-        encoder.set(png::ColorType::RGB).set(png::BitDepth::Eight);
-
-        let mut writer = encoder.write_header().unwrap();
-
-        writer.write_image_data(&buf).unwrap();
-    }
-
-    out.into_inner().unwrap()
+    Ok(buffer.into_inner().unwrap())
 }
 
 fn main() {
@@ -129,7 +118,7 @@ fn main() {
         }
 
         if !settings.dry_run {
-            let image = image_to_png(image);
+            let image = image_to_png(image).unwrap();
             let builder = UploadBuilder::new(image, media_types::image_png());
             let media_handle = core.run(builder.call(&token, &handle)).unwrap();
 
