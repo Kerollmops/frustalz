@@ -1,15 +1,7 @@
-extern crate frustalz;
-extern crate image;
-extern crate png;
-extern crate rand;
-#[macro_use] extern crate structopt;
-extern crate egg_mode;
-extern crate tokio_core;
-extern crate futures;
-
 use std::io::BufWriter;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
+
 use png::{Encoder, HasParameters};
 use rand::{StdRng, SeedableRng};
 use structopt::StructOpt;

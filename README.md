@@ -1,2 +1,2 @@
 # frustalz
-Fractals in Rust, for fun !
+Fractals in Rust, for fun!

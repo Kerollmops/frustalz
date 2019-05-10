@@ -8,10 +8,11 @@ pub use self::complex_palette::ComplexPalette;
 pub use self::sub_gradient::SubGradient;
 pub use self::screen_dimensions::ScreenDimensions;
 
-use image_crate::{imageops, RgbImage, Rgb};
+use image::{imageops, RgbImage, Rgb};
 use rayon::prelude::*;
-use camera::Camera;
-use fractal::Fractal;
+
+use crate::camera::Camera;
+use crate::fractal::Fractal;
 
 pub fn edges(image: &RgbImage) -> RgbImage {
     let kernel = [-1.0, -1.0, -1.0,
@@ -21,11 +22,12 @@ pub fn edges(image: &RgbImage) -> RgbImage {
     imageops::filter3x3(image, &kernel)
 }
 
-pub fn produce_image<F, C>(fractal: &F,
-                           camera: &Camera,
-                           dimensions: (u32, u32),
-                           painter: C)
-                           -> RgbImage
+pub fn produce_image<F, C>(
+    fractal: &F,
+    camera: &Camera,
+    dimensions: (u32, u32),
+    painter: C,
+)-> RgbImage
 where
     F: Fractal + ?Sized + Sync,
     C: Fn(u8) -> Rgb<u8> + Sync + Send

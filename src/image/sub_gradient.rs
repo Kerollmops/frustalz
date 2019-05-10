@@ -1,4 +1,4 @@
-use image::complex_palette::ComplexPalette;
+use crate::image::complex_palette::ComplexPalette;
 use palette::Gradient;
 use palette::Mix;
 

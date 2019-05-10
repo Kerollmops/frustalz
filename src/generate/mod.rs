@@ -6,20 +6,22 @@ pub use self::fractal_info::FractalInfo;
 
 use num_complex::Complex64;
 use rand::Rng;
+use rand_derive::Rand;
 use rand::distributions::{Range, IndependentSample};
 use pathfinding::dijkstra::dijkstra;
-use image_crate::{imageops, RgbImage, Rgb, FilterType};
-use fractal::{Fractal, Mandelbrot, Julia};
-use camera::Camera;
-use image::{Antialiazing, ComplexPalette, SubGradient, ScreenDimensions};
-use image::{produce_image, edges};
+use image::{imageops, RgbImage, Rgb, FilterType};
+use crate::fractal::{Fractal, Mandelbrot, Julia};
+use crate::camera::Camera;
+use crate::image::{Antialiazing, ComplexPalette, SubGradient, ScreenDimensions};
+use crate::image::{produce_image, edges};
 use palette::Gradient;
 use palette::rgb::LinSrgb;
 
-fn find_point<P>(start: (u32, u32),
-                 image: &RgbImage,
-                 predicate: P)
-                 -> Option<(u32, u32)>
+fn find_point<P>(
+    start: (u32, u32),
+    image: &RgbImage,
+    predicate: P,
+) -> Option<(u32, u32)>
 where
     P: Fn(&Rgb<u8>) -> bool
 {
@@ -58,11 +60,12 @@ pub enum FractalType {
 ///   - find the nearest black point
 ///   - create an edge image of the first grayscaled image
 ///   - find the nearest white point on the edged image starting from the previous black point
-fn find_target_point<F, R>(rng: &mut R,
-                           fractal: &F,
-                           camera: &Camera,
-                           dimensions: (u32, u32))
-                           -> Option<(u32, u32)>
+fn find_target_point<F, R>(
+    rng: &mut R,
+    fractal: &F,
+    camera: &Camera,
+    dimensions: (u32, u32),
+) -> Option<(u32, u32)>
 where
     F: Fractal + Sync,
     R: Rng
@@ -82,10 +85,12 @@ where
     })
 }
 
-fn produce_debug_image<F>(fractal: &F,
-                          camera: &Camera,
-                          dimensions: (u32, u32),
-                          n: usize)
+fn produce_debug_image<F>(
+    fractal: &F,
+    camera: &Camera,
+    dimensions: (u32, u32),
+    n: usize,
+)
 where
     F: Fractal + Sync
 {

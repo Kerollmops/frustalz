@@ -1,5 +1,5 @@
 use num_complex::Complex64;
-use fractal::Fractal;
+use crate::fractal::Fractal;
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub struct Mandelbrot;

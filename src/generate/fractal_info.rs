@@ -1,6 +1,6 @@
 use std::fmt;
 use num_complex::Complex64;
-use generate::FractalType;
+use crate::generate::FractalType;
 
 #[derive(Debug)]
 pub struct FractalInfo {
