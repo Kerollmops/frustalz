@@ -27,7 +27,7 @@ pub fn produce_image<F, C>(
     camera: &Camera,
     dimensions: (u32, u32),
     painter: C,
-)-> RgbImage
+) -> RgbImage
 where
     F: Fractal + ?Sized + Sync,
     C: Fn(u8) -> Rgb<u8> + Sync + Send

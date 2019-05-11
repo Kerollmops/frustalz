@@ -24,9 +24,14 @@ impl Camera {
     /// https://stackoverflow.com/questions/22427395
     ///
     /// `point` is the point in screen coordinates (`[0, width[`).
-    pub fn target_on(&mut self, point: [f64; 2], zoom: f64) {
+    pub fn target_on_screen(&mut self, point: [f64; 2], zoom: f64) {
+        let point = self.screen_to_world(point);
+        self.target_on_world(point, zoom)
+    }
+
+    pub fn target_on_world(&mut self, point: [f64; 2], zoom: f64) {
         let [cx, cy] = self.center;
-        let [x, y] = self.screen_to_world(point);
+        let [x, y] = point;
 
         // https://stackoverflow.com/a/22700814/1941280
         //

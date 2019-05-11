@@ -89,14 +89,15 @@ fn produce_debug_image<F>(
     fractal: &F,
     camera: &Camera,
     dimensions: (u32, u32),
-    n: usize,
+    zoom: usize,
+    sub_zoom: usize,
 )
 where
     F: Fractal + Sync
 {
     let grayscaled = produce_image(fractal, camera, dimensions, |i| Rgb { data: [i; 3] });
     let image = edges(&grayscaled);
-    image.save(format!("./spotted-area-{:03}.png", n)).unwrap();
+    image.save(format!("./spotted-area-{:03}-{:03}.png", zoom, sub_zoom)).unwrap();
 }
 
 #[derive(Debug)]
@@ -146,60 +147,70 @@ impl<R: Rng> Generator<R> {
         let (width, height) = dimensions;
         let mut camera = Camera::new([width as f64, height as f64]);
 
-        let (fractal, fractal_type, domain, mut zoom_steps): (Box<Fractal + Sync>, _, _, _) =
-            match self.rng.gen() {
-                FractalType::Julia => {
-                    // https://upload.wikimedia.org/wikipedia/commons/a/a9/Julia-Teppich.png
-                    // http://www.karlsims.com/julia.html
-                    let sub_gradients = Gradient::new(vec![
-                        SubGradient::new(ComplexPalette::new(-0.8,  0.3 ), ComplexPalette::new(-0.8,   0.15 )),
-                        SubGradient::new(ComplexPalette::new(-0.6,  0.7 ), ComplexPalette::new(-0.6,   0.5  )),
-                        SubGradient::new(ComplexPalette::new(-0.4,  0.65), ComplexPalette::new(-0.4,   0.6  )),
-                        SubGradient::new(ComplexPalette::new(-0.2,  0.9 ), ComplexPalette::new(-0.2,   0.8  )),
-                        SubGradient::new(ComplexPalette::new( 0.0,  1.0 ), ComplexPalette::new( 0.0,   0.7  )),
-                        SubGradient::new(ComplexPalette::new( 0.19, 0.6 ), ComplexPalette::new( 0.19,  0.552)),
-                        SubGradient::new(ComplexPalette::new( 0.28, 0.01), ComplexPalette::new( 0.28, -0.01 )),
-                        SubGradient::new(ComplexPalette::new( 0.29, 0.6 ), ComplexPalette::new( 0.29,  0.55 )),
-                    ]);
+        let fractal: Box<Fractal + Sync>;
+        let fractal_type;
+        let domain;
+        let zoom_steps;
 
-                    let sub_gradient = sub_gradients.get(self.rng.gen());
-                    let gradient = sub_gradient.gradient();
-                    let ComplexPalette(Complex64 { re, im }) = gradient.get(self.rng.gen());
+        match self.rng.gen() {
+            FractalType::Julia => {
+                // https://upload.wikimedia.org/wikipedia/commons/a/a9/Julia-Teppich.png
+                // http://www.karlsims.com/julia.html
+                let sub_gradients = Gradient::new(vec![
+                    SubGradient::new(ComplexPalette::new(-0.8,  0.3 ), ComplexPalette::new(-0.8,   0.15 )),
+                    SubGradient::new(ComplexPalette::new(-0.6,  0.7 ), ComplexPalette::new(-0.6,   0.5  )),
+                    SubGradient::new(ComplexPalette::new(-0.4,  0.65), ComplexPalette::new(-0.4,   0.6  )),
+                    SubGradient::new(ComplexPalette::new(-0.2,  0.9 ), ComplexPalette::new(-0.2,   0.8  )),
+                    SubGradient::new(ComplexPalette::new( 0.0,  1.0 ), ComplexPalette::new( 0.0,   0.7  )),
+                    SubGradient::new(ComplexPalette::new( 0.19, 0.6 ), ComplexPalette::new( 0.19,  0.552)),
+                    SubGradient::new(ComplexPalette::new( 0.28, 0.01), ComplexPalette::new( 0.28, -0.01 )),
+                    SubGradient::new(ComplexPalette::new( 0.29, 0.6 ), ComplexPalette::new( 0.29,  0.55 )),
+                ]);
 
-                    let fractal = Julia::new(re, im);
-                    let zoom_steps = self.rng.gen_range(0, 44);
+                let sub_gradient = sub_gradients.get(self.rng.gen());
+                let gradient = sub_gradient.gradient();
+                let ComplexPalette(Complex64 { re, im }) = gradient.get(self.rng.gen());
 
-                    (Box::new(fractal), FractalType::Julia, Complex64::new(re, im), zoom_steps)
-                },
-                FractalType::Mandelbrot => {
-                    let fractal = Mandelbrot::new();
-                    let zoom_steps = self.rng.gen_range(20, 44);
+                fractal = Box::new(Julia::new(re, im));
+                fractal_type = FractalType::Julia;
+                domain = Complex64::new(re, im);
+                zoom_steps = self.rng.gen_range(0, 44);
+            },
+            FractalType::Mandelbrot => {
+                fractal = Box::new(Mandelbrot::new());
+                fractal_type = FractalType::Mandelbrot;
+                domain = Complex64::new(0.0, 0.0);
+                zoom_steps = self.rng.gen_range(20, 44);
+            },
+        };
 
-                    (Box::new(fractal), FractalType::Mandelbrot, Complex64::new(0.0, 0.0), zoom_steps)
-                },
-            };
-
-        let zoom_distr = Range::new(0.5, 0.8);
+        let zoom_distr = Range::new(0.93, 0.97);
 
         // to zoom into the fractal:
         //   - find a good target point using the current camera
         //   - zoom using the camera into the current image
         //   - repeat the first step until the max number of iteration is reached
         //     or a target point can't be found
-        loop {
-            if zoom_steps == 0 { break }
+        for i in 0..zoom_steps {
             match find_target_point(&mut self.rng, &fractal, &camera, dimensions) {
                 Some((x, y)) => {
-                    let zoom_multiplier = zoom_distr.ind_sample(&mut self.rng);
-                    let zoom = camera.zoom * zoom_multiplier;
+                    let [cx, cy] = camera.center;
+                    let [x, y] = camera.screen_to_world([x as f64, y as f64]);
 
-                    camera.target_on([x as f64, y as f64], zoom);
+                    for n in 0..10 {
+                        let zoom_multiplier = zoom_distr.ind_sample(&mut self.rng);
+                        let zoom = camera.zoom * zoom_multiplier;
 
-                    if self.debug_images {
-                        produce_debug_image(&fractal, &camera, dimensions, zoom_steps);
+                        let t = n as f64 / 10.0;
+                        let x = cx + t * (x - cx);
+                        let y = cy + t * (y - cy);
+
+                        camera.target_on_world([x, y], zoom);
+
+                        if self.debug_images {
+                            produce_debug_image(&fractal, &camera, dimensions, i, n);
+                        }
                     }
-
-                    zoom_steps -= 1;
                 },
                 None => break,
             }
