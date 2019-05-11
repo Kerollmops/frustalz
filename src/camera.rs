@@ -14,6 +14,11 @@ impl Camera {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.center = [0.0, 0.0];
+        self.zoom = 1.0;
+    }
+
     /// Moves the camera center in order to
     /// keep the given `point` to the same position on screen coordinates.
     ///

@@ -5,16 +5,17 @@ version = "0.1.0"
 authors = ["Kerollmops <renault.cle@gmail.com>"]
 
 [dependencies]
-num-complex = "0.1"
-png = "0.11"
-palette = "0.3"
-rand = "0.4"
-rand_derive = "0.3"
-pathfinding = "0.7"
-rayon = "1.0"
 chrono = "0.4"
 egg-mode = "0.12"
+flo_curves = "0.2"
 futures = "0.1"
+num-complex = "0.1"
+palette = "0.3"
+pathfinding = "0.7"
+png = "0.11"
+rand = "0.4"
+rand_derive = "0.3"
+rayon = "1.0"
 tokio-core = "0.1"
 
 [dependencies.image]

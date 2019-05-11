@@ -89,15 +89,14 @@ fn produce_debug_image<F>(
     fractal: &F,
     camera: &Camera,
     dimensions: (u32, u32),
-    zoom: usize,
-    sub_zoom: usize,
+    step: usize,
 )
 where
     F: Fractal + Sync
 {
     let grayscaled = produce_image(fractal, camera, dimensions, |i| Rgb { data: [i; 3] });
     let image = edges(&grayscaled);
-    image.save(format!("./spotted-area-{:03}-{:03}.png", zoom, sub_zoom)).unwrap();
+    image.save(format!("./spotted-area-{:03}.png", step)).unwrap();
 }
 
 #[derive(Debug)]
@@ -184,35 +183,58 @@ impl<R: Rng> Generator<R> {
             },
         };
 
-        let zoom_distr = Range::new(0.93, 0.97);
+        use flo_curves::{Coord2, BezierCurveFactory, BezierCurve};
+        use flo_curves::bezier::Curve;
+
+        let zoom_distr = Range::new(0.5, 0.8);
+        let mut points = Vec::new();
 
         // to zoom into the fractal:
         //   - find a good target point using the current camera
         //   - zoom using the camera into the current image
         //   - repeat the first step until the max number of iteration is reached
         //     or a target point can't be found
-        for i in 0..zoom_steps {
+        for _ in 0..zoom_steps {
             match find_target_point(&mut self.rng, &fractal, &camera, dimensions) {
                 Some((x, y)) => {
-                    let [cx, cy] = camera.center;
-                    let [x, y] = camera.screen_to_world([x as f64, y as f64]);
+                    let [x, y] = [x as f64, y as f64];
+                    let [x, y] = camera.screen_to_world([x, y]);
 
-                    for n in 0..10 {
-                        let zoom_multiplier = zoom_distr.ind_sample(&mut self.rng);
-                        let zoom = camera.zoom * zoom_multiplier;
+                    let zoom_multiplier = zoom_distr.ind_sample(&mut self.rng);
+                    let zoom = camera.zoom * zoom_multiplier;
 
-                        let t = n as f64 / 10.0;
-                        let x = cx + t * (x - cx);
-                        let y = cy + t * (y - cy);
-
-                        camera.target_on_world([x, y], zoom);
-
-                        if self.debug_images {
-                            produce_debug_image(&fractal, &camera, dimensions, i, n);
-                        }
-                    }
+                    camera.target_on_world([x, y], zoom);
+                    points.push(Coord2(x, y));
                 },
                 None => break,
+            }
+        }
+
+        let start_zoom = 1.0;
+        let final_zoom = camera.zoom;
+        let curves = Curve::fit_from_points(&points, 0.0).expect("curves cannot be generated");
+
+        camera.reset();
+
+        fn lerp(v0: f64, v1: f64, t: f64) -> f64 {
+            (1.0 - t) * v0 + t * v1
+        }
+
+        let steps = curves.len();
+        let sub_steps = 10;
+
+        for (n, curve) in curves.into_iter().enumerate() {
+            for i in 0..sub_steps {
+                let t_zoom = (n as f64 * sub_steps as f64 + i as f64) / (steps as f64 * sub_steps as f64);
+                let zoom = lerp(start_zoom, final_zoom, t_zoom);
+
+                let t = i as f64 / sub_steps as f64;
+                let Coord2(x, y) = curve.point_at_pos(t);
+                camera.target_on_world([x, y], zoom);
+
+                if self.debug_images {
+                    produce_debug_image(&fractal, &camera, dimensions, n);
+                }
             }
         }
 
