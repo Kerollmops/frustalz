@@ -80,9 +80,8 @@ fn main() {
         consumer: KeyPair::new(consumer_key, consumer_secret),
         access: KeyPair::new(access_key, access_secret),
     };
-    let handle = core.handle();
 
-    if let Err(err) = core.run(egg_mode::verify_tokens(&token, &handle)) {
+    if let Err(err) = core.run(egg_mode::verify_tokens(&token)) {
         eprintln!("{}", err);
     }
     else {
@@ -123,11 +122,11 @@ fn main() {
         if !settings.dry_run {
             let image = image_to_png(image);
             let builder = UploadBuilder::new(image, media_types::image_png());
-            let media_handle = core.run(builder.call(&token, &handle)).unwrap();
+            let media_handle = core.run(builder.call(&token)).unwrap();
 
             let message = info.to_string();
             let draft = DraftTweet::new(message).media_ids(&[media_handle.id]);
-            let tweet = core.run(draft.send(&token, &handle)).unwrap();
+            let tweet = core.run(draft.send(&token)).unwrap();
 
             if let Some(url) = tweet.entities.urls.first().map(|u| &u.url) {
                 println!("tweet url: {}", url);
