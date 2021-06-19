@@ -8,7 +8,7 @@ use crate::camera::Camera;
 use crate::fractal::{Fractal, Julia, Mandelbrot};
 use crate::image::{edges, produce_image};
 use crate::image::{Antialiazing, ComplexPalette, ScreenDimensions, SubGradient};
-use image::{imageops, FilterType, Rgb, RgbImage};
+use image::{imageops, Rgb, RgbImage};
 use num_complex::Complex64;
 use palette::rgb::LinSrgb;
 use palette::Gradient;
@@ -71,7 +71,7 @@ where
 {
     let (width, height) = dimensions;
 
-    let grayscaled = produce_image(fractal, camera, dimensions, |i| Rgb { data: [i; 3] });
+    let grayscaled = produce_image(fractal, camera, dimensions, None, |i| Rgb { data: [i; 3] });
     let blurred = imageops::blur(&grayscaled, 10.0);
     let black_point = {
         let start = (rng.gen_range(0, width), rng.gen_range(0, height));
@@ -82,20 +82,6 @@ where
         let edged = edges(&grayscaled);
         find_point(black_point, &edged, |p| p.data[0] >= 128)
     })
-}
-
-fn produce_debug_image<F>(
-    fractal: &F,
-    camera: &Camera,
-    dimensions: (u32, u32),
-    zoom: usize,
-    sub_zoom: usize,
-) where
-    F: Fractal + Sync,
-{
-    let grayscaled = produce_image(fractal, camera, dimensions, |i| Rgb { data: [i; 3] });
-    let image = edges(&grayscaled);
-    image.save(format!("./spotted-area-{:03}-{:03}.png", zoom, sub_zoom)).unwrap();
 }
 
 #[derive(Debug)]
@@ -145,7 +131,7 @@ impl<R: Rng> Generator<R> {
         let (width, height) = dimensions;
         let mut camera = Camera::new([width as f64, height as f64]);
 
-        let fractal: Box<Fractal + Sync>;
+        let fractal: Box<dyn Fractal + Sync>;
         let fractal_type;
         let domain;
         let zoom_steps;
@@ -204,6 +190,19 @@ impl<R: Rng> Generator<R> {
         };
 
         let zoom_distr = Range::new(0.93, 0.97);
+        let gradient = Gradient::with_domain(vec![
+            (0.0, LinSrgb::new(0.0, 0.027, 0.392)),   // 0,    2.7,  39.2
+            (0.16, LinSrgb::new(0.125, 0.42, 0.796)), // 12.5, 42,   79.6
+            (0.42, LinSrgb::new(0.929, 1.0, 1.0)),    // 92.9, 100,  100
+            (0.6425, LinSrgb::new(1.0, 0.667, 0.0)),  // 100,  66.7, 0
+            (0.8575, LinSrgb::new(0.0, 0.008, 0.0)),  // 0,    0.8,  0
+            (1.0, LinSrgb::new(0.0, 0.0, 0.0)),       // 0,    0,    0
+        ]);
+
+        let painter = |i| {
+            let color = gradient.get(i as f32 / 255.0);
+            Rgb { data: color.into_pixel() }
+        };
 
         // to zoom into the fractal:
         //   - find a good target point using the current camera
@@ -227,7 +226,12 @@ impl<R: Rng> Generator<R> {
                         camera.target_on_world([x, y], zoom);
 
                         if self.debug_images {
-                            produce_debug_image(&fractal, &camera, dimensions, i, n);
+                            let image = produce_image(&fractal, &camera, dimensions, None, |i| {
+                                Rgb { data: [i; 3] }
+                            });
+                            edges(&image)
+                                .save(format!("./spotted-area-{:03}-{:03}.png", i, n))
+                                .unwrap();
                         }
                     }
                 }
@@ -235,31 +239,8 @@ impl<R: Rng> Generator<R> {
             }
         }
 
-        let gradient = Gradient::with_domain(vec![
-            (0.0, LinSrgb::new(0.0, 0.027, 0.392)),   // 0,    2.7,  39.2
-            (0.16, LinSrgb::new(0.125, 0.42, 0.796)), // 12.5, 42,   79.6
-            (0.42, LinSrgb::new(0.929, 1.0, 1.0)),    // 92.9, 100,  100
-            (0.6425, LinSrgb::new(1.0, 0.667, 0.0)),  // 100,  66.7, 0
-            (0.8575, LinSrgb::new(0.0, 0.008, 0.0)),  // 0,    0.8,  0
-            (1.0, LinSrgb::new(0.0, 0.0, 0.0)),       // 0,    0,    0
-        ]);
-
-        let painter = |i| {
-            let color = gradient.get(i as f32 / 255.0);
-            Rgb { data: color.into_pixel() }
-        };
-
         let dimensions = self.shot_dimensions.as_tuple();
-        let (width, height) = dimensions;
-
-        let aa = antialiazing as f64;
-
-        let (bwidth, bheight) = (width * aa as u32, height * aa as u32);
-        camera.screen_size = [bwidth as f64, bheight as f64];
-
-        let image = produce_image(&fractal, &camera, (bwidth, bheight), painter);
-        let image = imageops::resize(&image, width, height, FilterType::Triangle);
-
+        let image = produce_image(&fractal, &camera, dimensions, Some(antialiazing), painter);
         let info = FractalInfo { fractal_type, domain, position: camera.center, zoom: camera.zoom };
 
         (info, image)
