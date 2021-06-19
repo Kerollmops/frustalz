@@ -4,46 +4,45 @@ mod fractal_info;
 pub use self::date_seed::DateSeed;
 pub use self::fractal_info::FractalInfo;
 
+use crate::camera::Camera;
+use crate::fractal::{Fractal, Julia, Mandelbrot};
+use crate::image::{edges, produce_image};
+use crate::image::{Antialiazing, ComplexPalette, ScreenDimensions, SubGradient};
+use image::{imageops, FilterType, Rgb, RgbImage};
 use num_complex::Complex64;
+use palette::rgb::LinSrgb;
+use palette::Gradient;
+use pathfinding::dijkstra::dijkstra;
+use rand::distributions::{IndependentSample, Range};
 use rand::Rng;
 use rand_derive::Rand;
-use rand::distributions::{Range, IndependentSample};
-use pathfinding::dijkstra::dijkstra;
-use image::{imageops, RgbImage, Rgb, FilterType};
-use crate::fractal::{Fractal, Mandelbrot, Julia};
-use crate::camera::Camera;
-use crate::image::{Antialiazing, ComplexPalette, SubGradient, ScreenDimensions};
-use crate::image::{produce_image, edges};
-use palette::Gradient;
-use palette::rgb::LinSrgb;
 
-fn find_point<P>(
-    start: (u32, u32),
-    image: &RgbImage,
-    predicate: P,
-) -> Option<(u32, u32)>
+fn find_point<P>(start: (u32, u32), image: &RgbImage, predicate: P) -> Option<(u32, u32)>
 where
-    P: Fn(&Rgb<u8>) -> bool
+    P: Fn(&Rgb<u8>) -> bool,
 {
     let (width, height) = image.dimensions();
 
-    let result = dijkstra(&start, |&(x, y)| {
-        let mut neighbours = Vec::new();
-        if x > 0 {
-            neighbours.push(((x - 1, y), 1))
-        }
-        if y > 0 {
-            neighbours.push(((x, y - 1), 1))
-        }
-        if x < width - 1 {
-            neighbours.push(((x + 1, y), 1))
-        }
-        if y < height - 1 {
-            neighbours.push(((x, y + 1), 1))
-        }
-        neighbours
-    },
-    |&(x, y)| predicate(&image.get_pixel(x, y)));
+    let result = dijkstra(
+        &start,
+        |&(x, y)| {
+            let mut neighbours = Vec::new();
+            if x > 0 {
+                neighbours.push(((x - 1, y), 1))
+            }
+            if y > 0 {
+                neighbours.push(((x, y - 1), 1))
+            }
+            if x < width - 1 {
+                neighbours.push(((x + 1, y), 1))
+            }
+            if y < height - 1 {
+                neighbours.push(((x, y + 1), 1))
+            }
+            neighbours
+        },
+        |&(x, y)| predicate(&image.get_pixel(x, y)),
+    );
 
     result.map(|(path, _)| *path.last().unwrap())
 }
@@ -68,7 +67,7 @@ fn find_target_point<F, R>(
 ) -> Option<(u32, u32)>
 where
     F: Fractal + Sync,
-    R: Rng
+    R: Rng,
 {
     let (width, height) = dimensions;
 
@@ -91,9 +90,8 @@ fn produce_debug_image<F>(
     dimensions: (u32, u32),
     zoom: usize,
     sub_zoom: usize,
-)
-where
-    F: Fractal + Sync
+) where
+    F: Fractal + Sync,
 {
     let grayscaled = produce_image(fractal, camera, dimensions, |i| Rgb { data: [i; 3] });
     let image = edges(&grayscaled);
@@ -157,14 +155,35 @@ impl<R: Rng> Generator<R> {
                 // https://upload.wikimedia.org/wikipedia/commons/a/a9/Julia-Teppich.png
                 // http://www.karlsims.com/julia.html
                 let sub_gradients = Gradient::new(vec![
-                    SubGradient::new(ComplexPalette::new(-0.8,  0.3 ), ComplexPalette::new(-0.8,   0.15 )),
-                    SubGradient::new(ComplexPalette::new(-0.6,  0.7 ), ComplexPalette::new(-0.6,   0.5  )),
-                    SubGradient::new(ComplexPalette::new(-0.4,  0.65), ComplexPalette::new(-0.4,   0.6  )),
-                    SubGradient::new(ComplexPalette::new(-0.2,  0.9 ), ComplexPalette::new(-0.2,   0.8  )),
-                    SubGradient::new(ComplexPalette::new( 0.0,  1.0 ), ComplexPalette::new( 0.0,   0.7  )),
-                    SubGradient::new(ComplexPalette::new( 0.19, 0.6 ), ComplexPalette::new( 0.19,  0.552)),
-                    SubGradient::new(ComplexPalette::new( 0.28, 0.01), ComplexPalette::new( 0.28, -0.01 )),
-                    SubGradient::new(ComplexPalette::new( 0.29, 0.6 ), ComplexPalette::new( 0.29,  0.55 )),
+                    SubGradient::new(
+                        ComplexPalette::new(-0.8, 0.3),
+                        ComplexPalette::new(-0.8, 0.15),
+                    ),
+                    SubGradient::new(
+                        ComplexPalette::new(-0.6, 0.7),
+                        ComplexPalette::new(-0.6, 0.5),
+                    ),
+                    SubGradient::new(
+                        ComplexPalette::new(-0.4, 0.65),
+                        ComplexPalette::new(-0.4, 0.6),
+                    ),
+                    SubGradient::new(
+                        ComplexPalette::new(-0.2, 0.9),
+                        ComplexPalette::new(-0.2, 0.8),
+                    ),
+                    SubGradient::new(ComplexPalette::new(0.0, 1.0), ComplexPalette::new(0.0, 0.7)),
+                    SubGradient::new(
+                        ComplexPalette::new(0.19, 0.6),
+                        ComplexPalette::new(0.19, 0.552),
+                    ),
+                    SubGradient::new(
+                        ComplexPalette::new(0.28, 0.01),
+                        ComplexPalette::new(0.28, -0.01),
+                    ),
+                    SubGradient::new(
+                        ComplexPalette::new(0.29, 0.6),
+                        ComplexPalette::new(0.29, 0.55),
+                    ),
                 ]);
 
                 let sub_gradient = sub_gradients.get(self.rng.gen());
@@ -175,13 +194,13 @@ impl<R: Rng> Generator<R> {
                 fractal_type = FractalType::Julia;
                 domain = Complex64::new(re, im);
                 zoom_steps = self.rng.gen_range(0, 44);
-            },
+            }
             FractalType::Mandelbrot => {
                 fractal = Box::new(Mandelbrot::new());
                 fractal_type = FractalType::Mandelbrot;
                 domain = Complex64::new(0.0, 0.0);
                 zoom_steps = self.rng.gen_range(20, 44);
-            },
+            }
         };
 
         let zoom_distr = Range::new(0.93, 0.97);
@@ -211,18 +230,18 @@ impl<R: Rng> Generator<R> {
                             produce_debug_image(&fractal, &camera, dimensions, i, n);
                         }
                     }
-                },
+                }
                 None => break,
             }
         }
 
         let gradient = Gradient::with_domain(vec![
-            (0.0,    LinSrgb::new(0.0,   0.027, 0.392)), // 0,    2.7,  39.2
-            (0.16,   LinSrgb::new(0.125, 0.42,  0.796)), // 12.5, 42,   79.6
-            (0.42,   LinSrgb::new(0.929, 1.0,   1.0)),   // 92.9, 100,  100
-            (0.6425, LinSrgb::new(1.0,   0.667, 0.0)),   // 100,  66.7, 0
-            (0.8575, LinSrgb::new(0.0,   0.008, 0.0)),   // 0,    0.8,  0
-            (1.0,    LinSrgb::new(0.0,   0.0,   0.0)),   // 0,    0,    0
+            (0.0, LinSrgb::new(0.0, 0.027, 0.392)),   // 0,    2.7,  39.2
+            (0.16, LinSrgb::new(0.125, 0.42, 0.796)), // 12.5, 42,   79.6
+            (0.42, LinSrgb::new(0.929, 1.0, 1.0)),    // 92.9, 100,  100
+            (0.6425, LinSrgb::new(1.0, 0.667, 0.0)),  // 100,  66.7, 0
+            (0.8575, LinSrgb::new(0.0, 0.008, 0.0)),  // 0,    0.8,  0
+            (1.0, LinSrgb::new(0.0, 0.0, 0.0)),       // 0,    0,    0
         ]);
 
         let painter = |i| {
@@ -241,12 +260,7 @@ impl<R: Rng> Generator<R> {
         let image = produce_image(&fractal, &camera, (bwidth, bheight), painter);
         let image = imageops::resize(&image, width, height, FilterType::Triangle);
 
-        let info = FractalInfo {
-            fractal_type,
-            domain,
-            position: camera.center,
-            zoom: camera.zoom
-        };
+        let info = FractalInfo { fractal_type, domain, position: camera.center, zoom: camera.zoom };
 
         (info, image)
     }

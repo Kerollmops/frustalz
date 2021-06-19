@@ -1,12 +1,12 @@
-use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
-use rand::{StdRng, SeedableRng};
-use structopt::StructOpt;
 use frustalz::{
-    generate::{Generator, DateSeed},
+    generate::{DateSeed, Generator},
     image::{Antialiazing, ScreenDimensions},
 };
+use rand::{SeedableRng, StdRng};
+use structopt::StructOpt;
 
 #[derive(Debug, Clone, StructOpt)]
 pub struct Settings {

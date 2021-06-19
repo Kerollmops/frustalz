@@ -1,5 +1,5 @@
-use num_complex::Complex64;
 use crate::fractal::Fractal;
+use num_complex::Complex64;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub struct Julia {
@@ -8,9 +8,7 @@ pub struct Julia {
 
 impl Julia {
     pub fn new(re: f64, im: f64) -> Julia {
-        Julia {
-            c: Complex64::new(re, im)
-        }
+        Julia { c: Complex64::new(re, im) }
     }
 }
 

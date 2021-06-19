@@ -1,11 +1,8 @@
+use chrono::{DateTime, Timelike, Utc};
 use std::str::FromStr;
-use chrono::{Utc, DateTime, Timelike};
 
 fn floor_to_hour(datetime: DateTime<Utc>) -> Option<DateTime<Utc>> {
-    datetime
-        .with_minute(0)?
-        .with_second(0)?
-        .with_nanosecond(0)
+    datetime.with_minute(0)?.with_second(0)?.with_nanosecond(0)
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]

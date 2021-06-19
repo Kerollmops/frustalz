@@ -7,11 +7,7 @@ pub struct Camera {
 
 impl Camera {
     pub fn new(screen_size: [f64; 2]) -> Camera {
-        Camera {
-            screen_size,
-            center: [0.0, 0.0],
-            zoom: 1.0,
-        }
+        Camera { screen_size, center: [0.0, 0.0], zoom: 1.0 }
     }
 
     /// Moves the camera center in order to

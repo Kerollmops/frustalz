@@ -1,6 +1,6 @@
-use std::fmt;
-use num_complex::Complex64;
 use crate::generate::FractalType;
+use num_complex::Complex64;
+use std::fmt;
 
 #[derive(Debug)]
 pub struct FractalInfo {
@@ -17,15 +17,27 @@ impl fmt::Display for FractalInfo {
         match self.fractal_type {
             FractalType::Julia => {
                 let Complex64 { re, im } = self.domain;
-                write!(f, "Here is the julia fractal in the domain ({:.3}, {:.3}), \
+                write!(
+                    f,
+                    "Here is the julia fractal in the domain ({:.3}, {:.3}), \
                        focus is on the area ({:.3}, {:.3}) with the zoom set on {:.3}x.",
-                        re, im, x, y, self.zoom.recip())
-            },
+                    re,
+                    im,
+                    x,
+                    y,
+                    self.zoom.recip()
+                )
+            }
             FractalType::Mandelbrot => {
-                write!(f, "Here is the mandelbrot fractal, \
+                write!(
+                    f,
+                    "Here is the mandelbrot fractal, \
                        focus is on the area ({:.3}, {:.3}) with the zoom set on {:.3}x.",
-                        x, y, self.zoom.recip())
-            },
+                    x,
+                    y,
+                    self.zoom.recip()
+                )
+            }
         }
     }
 }

@@ -1,21 +1,20 @@
-use std::io::BufWriter;
-use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+use std::io::BufWriter;
 
-use png::{Encoder, HasParameters};
-use rand::{StdRng, SeedableRng};
-use structopt::StructOpt;
-use image::RgbImage;
 use egg_mode::{
-    media::{UploadBuilder, media_types},
+    media::{media_types, UploadBuilder},
     tweet::DraftTweet,
-    Token,
-    KeyPair,
+    KeyPair, Token,
 };
 use frustalz::{
-    generate::{Generator, DateSeed},
+    generate::{DateSeed, Generator},
     image::{Antialiazing, ScreenDimensions},
 };
+use image::RgbImage;
+use png::{Encoder, HasParameters};
+use rand::{SeedableRng, StdRng};
+use structopt::StructOpt;
 use tokio_core::reactor;
 
 #[derive(Debug, Clone, StructOpt)]
@@ -84,9 +83,7 @@ fn main() {
 
     if let Err(err) = core.run(egg_mode::verify_tokens(&token, &handle)) {
         eprintln!("{}", err);
-    }
-    else {
-
+    } else {
         let rng = {
             let datetime = settings.date_seed.unwrap_or_default();
             println!("{:?}", datetime);
